@@ -1,0 +1,29 @@
+---
+title: "Relatorio"
+author: "Erick Nasareth"
+date: "2025-04-11"
+output: pdf_document
+---
+
+Carregando dados
+
+```{r setup, include=FALSE}
+
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(readxl, tidyverse, writexl)
+
+```
+
+
+
+
+```{r}
+
+producao_pse <- read_excel("promocao_de_saude/Data/producao_pse_2023.xlsx", skip = 8)
+adesao <- read_excel("promocao_de_saude/Data/escolas_adesao_2023_2024.xlsx")
+populacao_2020 <- read_excel("promocao_de_saude/Data/populacao_estim_cob_2020.xls", skip = 7)
+
+
+
+```
+
