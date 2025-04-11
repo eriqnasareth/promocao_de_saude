@@ -11,6 +11,8 @@ pacman::p_load(readxl, tidyverse, writexl)
 
 ```
 
+
+removed the description lines
 ```{r}
 df <- readxl::read_xlsx("C:\\Users\\Eriq\\Desktop\\escolas_adesao_2023_2024.xlsx", skip = 4)
 ```
@@ -20,6 +22,7 @@ nrow(df[df$`ADERIU AO PROGRAMA DE OBESIDADE` == "Sim",])
 nrow(df[df$`PARTICIPOU DO NUTRISUS` == "Sim",])
 ```
 
+removed three col, they have no use, since all rows have the same value.
 ```{r}
 df <- df %>%
   select(-`PARTICIPOU DO NUTRISUS`, -`ADERIU AO PROGRAMA DE OBESIDADE`, `SITUAÇÃO ADESÃO`)
