@@ -15,14 +15,14 @@ pacman::p_load(readxl, tidyverse, writexl)
 ```
 
 
-
-
 ```{r}
 
-producao_pse <- read_excel("promocao_de_saude/Data/producao_pse_2023.xlsx", skip = 8)
-adesao <- read_excel("promocao_de_saude/Data/escolas_adesao_2023_2024.xlsx")
-populacao_2020 <- read_excel("promocao_de_saude/Data/populacao_estim_cob_2020.xls", skip = 7)
-temas <- read_excel("promocao_de_saude/Data/temas2023.xlsx")
+producao_pse <- read_excel("Data/producao_pse_2023.xlsx", skip = 8)
+adesao <- read_excel("Data/escolas_adesao_2023_2024.xlsx")
+temas <- read_excel("Data/temas2023.xlsx", skip = 10)
+bfa <- read_excel("Data/Bfa_Consolidado-geral-22023-porMunicipio.xlsx")
+pop <- read_excel("Data/pop_cadastrada_2023.xls")
+
 
 
 ```
