@@ -5,26 +5,63 @@ date: "2025-04-20"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("tidyverse", "readxl")
 ```
 
-## R Markdown
+Carregando os bancos que contem promocao em saude relacionado ao bolsa familia e a população, todos atualizados para 2023. 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r}
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+bolsa_familia <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
+populacao <- read_xls("Data/pop_cadastrada_2023.xls")
+atendimento <- read_xlsx("Data/atendimento_saude_2023.xlsx")
+palestras <- read_xlsx("Data/palestras_municipio_2023.xlsx")
+praticas <- read_xlsx("Data/praticas2023.xlsx")
 
-```{r cars}
-summary(cars)
 ```
 
-## Including Plots
+ajustes necessários para trabalhar com os bancos
 
-You can also embed plots, for example:
+```{r}
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+bolsa_familia <- rename(bolsa_familia, Ibge = IBGE)
+populacao <- rename(populacao, Ibge = IBGE)
+praticas$Ibge <- as.double(praticas$Ibge)
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+selecionando colunas que serão utilizadas em cada banco
+
+```{r}
+
+```
+
+
+Juntando os dois em apenas um banco, a partir da variavel codigo do IBGE para cada municipio.
+
+```{r}
+lista_dfs <- list(bolsa_familia, populacao, atendimento, palestras, praticas)
+
+# Junta tudo pela coluna "Ibge" (full join, ou seja, traz todos os dados possíveis)
+df <- reduce(lista_dfs, full_join, by = "Ibge")
+
+```
+
+
+```{r}
+bolsa <- bolsa %>%
+  mutate(-Vigência, -Município.y, -UF)
+```
+
+
+
+
+
+
+
+
+
+
+
