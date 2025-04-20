@@ -17,7 +17,7 @@ Carregando os bancos que contem promocao em saude relacionado ao bolsa familia e
 bolsa_familia <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
 populacao <- read_xls("Data/pop_cadastrada_2023.xls")
 atendimento <- read_xlsx("Data/atendimento_saude_2023.xlsx")
-palestras <- read_xlsx("Data/palestras_municipio_2023.xlsx")
+palestras <- read_xlsx("Data/palestras_municipio_2023.xlsx") #temas
 praticas <- read_xlsx("Data/praticas2023.xlsx")
 
 ```
