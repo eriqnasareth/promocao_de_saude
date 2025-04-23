@@ -14,10 +14,10 @@ Carregando os bancos que contem promocao em saude relacionado ao bolsa familia e
 
 ```{r}
 
-bolsa_familia <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
+bolsa <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
 populacao <- read_xls("Data/pop_cadastrada_2023.xls")
-atendimento <- read_xlsx("Data/atendimento_saude_2023.xlsx")
-palestras <- read_xlsx("Data/palestras_municipio_2023.xlsx") #temas
+#atendimento <- read_xlsx("Data/atendimento_saude_2023.xlsx")
+#palestras <- read_xlsx("Data/palestras_municipio_2023.xlsx") #temas
 praticas <- read_xlsx("Data/praticas2023.xlsx")
 
 ```
@@ -26,34 +26,86 @@ ajustes necessários para trabalhar com os bancos
 
 ```{r}
 
-bolsa_familia <- rename(bolsa_familia, Ibge = IBGE)
+bolsa <- rename(bolsa, Ibge = IBGE)
 populacao <- rename(populacao, Ibge = IBGE)
 praticas$Ibge <- as.double(praticas$Ibge)
 
 ```
 
-selecionando colunas que serão utilizadas em cada banco
-
 ```{r}
-
+populacao <- populacao %>%
+  select(Ibge, População)
 ```
 
 
-Juntando os dois em apenas um banco, a partir da variavel codigo do IBGE para cada municipio.
+
+selecionando colunas que serão utilizadas em cada banco e criando variaveis para cada nivel de separacao do Estado Brasileiro
 
 ```{r}
-lista_dfs <- list(bolsa_familia, populacao, atendimento, palestras, praticas)
+bolsa_municipio <- bolsa %>%
+  select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, `Perc. cobertura de beneficiários acompanhados (%)`)
 
-# Junta tudo pela coluna "Ibge" (full join, ou seja, traz todos os dados possíveis)
-df <- reduce(lista_dfs, full_join, by = "Ibge")
+bolsa_estado <- bolsa %>%
+  select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, )
 
+bolsa_brasil <- bolsa %>%
+  select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, )
+```
+
+adicionando a informação de populacao por municipio
+
+```{r}
+bolsa_municipio <- merge(bolsa_municipio, populacao, by="Ibge")
+bolsa_estado <- merge(bolsa_estado, populacao, by="Ibge")
+bolsa_brasil <- merge(bolsa_brasil, populacao, by="Ibge")
 ```
 
 
+
 ```{r}
-bolsa <- bolsa %>%
-  mutate(-Vigência, -Município.y, -UF)
+dados <- bolsa_municipio %>%
+  mutate(Proporcao = `Qtd. beneficiários acompanhados` / `Qtd. beneficiários a serem acompanhados`,
+         Porcentagem = round(Proporcao * 100, 1)) %>%
+  arrange(desc(Proporcao)) %>%
+  slice_head( n = 5)
+
+# Criando o gráfico
+ggplot(dados, aes(x = reorder(Município, Proporcao), y = Proporcao)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = paste0(Porcentagem, "%")), vjust = -0.5) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Proporção de Beneficiários Acompanhados por Município",
+    x = "Município",
+    y = "Proporção de Acompanhamento"
+  ) +
+  theme_minimal() +
+  coord_flip()
 ```
+
+
+
+```{r}
+dados <- bolsa_municipio %>%
+  mutate(Proporcao = `Qtd. beneficiários acompanhados` / `Qtd. beneficiários a serem acompanhados`,
+         Porcentagem = round(Proporcao * 100, 1)) %>%
+  arrange(desc(Proporcao)) %>%
+  slice_tail( n = 5)
+
+# Criando o gráfico
+ggplot(dados, aes(x = reorder(Município, Proporcao), y = Proporcao)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = paste0(Porcentagem, "%")), vjust = -0.5) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Proporção de Beneficiários Acompanhados por Município",
+    x = "Município",
+    y = "Proporção de Acompanhamento"
+  ) +
+  theme_minimal() +
+  coord_flip()
+```
+
 
 
 
