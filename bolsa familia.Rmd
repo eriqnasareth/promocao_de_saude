@@ -28,7 +28,6 @@ ajustes necessários para trabalhar com os bancos
 
 bolsa <- rename(bolsa, Ibge = IBGE)
 populacao <- rename(populacao, Ibge = IBGE)
-praticas$Ibge <- as.double(praticas$Ibge)
 
 ```
 
@@ -46,11 +45,17 @@ names(populacao)[2] <- "População"
 
 
 
+```{r}
+bolsa <- bolsa %>%
+  mutate(Mun_uf = str_c(bolsa$Município, " (", bolsa$Estado, ")"))
+```
+
+
 selecionando colunas que serão utilizadas em cada banco e criando variaveis para cada nivel de separacao do Estado Brasileiro
 
 ```{r}
 bolsa_municipio <- bolsa %>%
-  select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, `Perc. cobertura de beneficiários acompanhados (%)`)
+  select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, `Perc. cobertura de beneficiários acompanhados (%)`, Mun_uf)
 
 bolsa_estado <- bolsa %>%
   select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, )
@@ -68,29 +73,22 @@ bolsa_brasil <- merge(bolsa_brasil, populacao, by="Ibge")
 ```
 
 
+# Distribuição das porcentagens de beneficiários acompanhados por municipio
 
 ```{r}
-dados <- bolsa_municipio %>%
-  mutate(Proporcao = `Qtd. beneficiários acompanhados` / `Qtd. beneficiários a serem acompanhados`,
-         Porcentagem = round(Proporcao * 100, 1)) %>%
-  arrange(desc(Proporcao)) %>%
-  slice_head( n = 10)
 
-# Criando o gráfico
-ggplot(dados, aes(x = reorder(Município, Proporcao), y = Proporcao)) +
-  geom_col(fill = "steelblue") +
-  geom_text(aes(label = paste0(Porcentagem, "%")), vjust = -0.5) +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  labs(
-    title = "Proporção de Beneficiários Acompanhados por Município",
-    x = "Município",
-    y = "Proporção de Acompanhamento"
-  ) +
-  theme_minimal() +
-  coord_flip()
+bolsa_municipio %>% 
+  ggplot(aes(x = `Perc. cobertura de beneficiários acompanhados (%)`)) +
+  geom_histogram(fill = "steelblue") +
+  labs(x = "Percentual de beneficiários acompanhados", y = "Quantidade", title = "Distribuição dos municipios por percentual de beneficiários acompanhados")
+
 ```
 
 
+
+
+
+# Municípios com menos proporção de beneficiários acompanhados
 
 ```{r}
 dados <- bolsa_municipio %>%
@@ -100,9 +98,9 @@ dados <- bolsa_municipio %>%
   slice_tail( n = 10)
 
 # Criando o gráfico
-ggplot(dados, aes(x = reorder(Município, Proporcao), y = Proporcao)) +
+ggplot(dados, aes(x = reorder(Mun_uf, Proporcao), y = Proporcao)) +
   geom_col(fill = "steelblue") +
-  geom_text(aes(label = paste0(Porcentagem, "%")), vjust = -0.5) +
+  geom_text(aes(label = paste0(Porcentagem, "%")), vjust = 0.4) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
     title = "Proporção de Beneficiários Acompanhados por Município",
@@ -144,11 +142,12 @@ ggplot(dados_grafico, aes(x = reorder(Estado, Proporcao), y = Proporcao)) +
   geom_text(aes(label = paste0(Porcentagem, "%")), 
             hjust = 1.1, 
             color = "white", 
-            size = 3.5) +
+            size = 3,
+            vjust = 0.4) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
-    title = "Proporção de Beneficiários Acompanhados",
-    x = "Estado",
+    title = "Beneficiários Acompanhados por UF",
+    x = "UF",
     y = "Proporção de Acompanhamento"
   ) +
   theme_minimal() +
@@ -166,20 +165,19 @@ dados_grafico1 <- bolsa_estado %>%
   ) %>%
   mutate(
     porcentagem = round(proporcao * 100, 1)
-  ) %>%
-  arrange(desc(proporcao))  # Ordem crescente
+  ) 
 
 ggplot(dados_grafico1, aes(x = reorder(Estado, proporcao), y = proporcao)) +
-  geom_col(fill = "#1f77b4") +
+  geom_col(fill = "steelblue") +
   geom_text(aes(label = paste0(porcentagem, "%")), 
             hjust = -0.1, 
             color = "black", 
-            size = 3.5) +
+            size = 3) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1),
                    expand = expansion(mult = c(0, 0.15))) +
-  labs(title = "Proporção de Beneficiários Acompanhados pela População da UF",
-       x = "Estado",
-       y = "Proporção") +
+  labs(title = "Beneficiários Acompanhados por UF",
+       x = "UF",
+       y = "Proporção de ") +
   theme_minimal() +
   coord_flip()
 ```
