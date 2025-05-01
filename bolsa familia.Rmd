@@ -1,5 +1,5 @@
 ---
-title: "Bolsa famiia"
+title: "Bolsa familia"
 author: "Erick Nasareth"
 date: "2025-04-20"
 output: pdf_document
@@ -7,7 +7,8 @@ output: pdf_document
 
 ```{r}
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("tidyverse", "readxl")
+pacman::p_load("tidyverse", "readxl", "knitr")
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 Carregando os bancos que contem promocao em saude relacionado ao bolsa familia e a população, todos atualizados para 2023. 
@@ -38,7 +39,7 @@ names(populacao)[7] <- "populacao_cadastrada"
 
 ```{r}
 populacao <- populacao %>%
-  select(Ibge, populacao_cadastrada)
+  select(Ibge, populacao_cadastrada, Região)
 
 names(populacao)[2] <- "População"
 ```
@@ -60,6 +61,9 @@ bolsa_municipio <- bolsa %>%
 bolsa_estado <- bolsa %>%
   select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, )
 
+bolsa_regiao <- bolsa %>%
+  select(Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, )
+
 bolsa_brasil <- bolsa %>%
   select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, )
 ```
@@ -70,10 +74,13 @@ adicionando a informação de populacao por municipio
 bolsa_municipio <- merge(bolsa_municipio, populacao, by="Ibge")
 bolsa_estado <- merge(bolsa_estado, populacao, by="Ibge")
 bolsa_brasil <- merge(bolsa_brasil, populacao, by="Ibge")
+bolsa_regiao <- merge(bolsa_regiao, populacao, by="Ibge")
 ```
 
 
-# Distribuição das porcentagens de beneficiários acompanhados por municipio
+# Por municipio
+
+## Distribuição das porcentagens de beneficiários acompanhados por municipio
 
 ```{r}
 
@@ -88,7 +95,7 @@ bolsa_municipio %>%
 
 
 
-# Municípios com menos proporção de beneficiários acompanhados
+## Municípios com menos proporção de beneficiários acompanhados
 
 ```{r}
 dados <- bolsa_municipio %>%
@@ -111,7 +118,7 @@ ggplot(dados, aes(x = reorder(Mun_uf, Proporcao), y = Proporcao)) +
   coord_flip()
 ```
 
-## informações por estado
+# informações por UF
 
 ```{r}
 bolsa_estado <- bolsa_estado %>%
@@ -121,6 +128,37 @@ prop_bsa_estado <- bolsa_estado %>%
   group_by(Estado) %>%
   summarise(sum_acomp = sum(`Qtd. beneficiários acompanhados`), sum_total_acomp = sum(`Qtd. beneficiários a serem acompanhados`), Proporcao = sum_acomp / sum_total_acomp)
 ```
+
+
+
+```{r}
+dados_grafico2 <- bolsa_estado %>%
+  group_by(Estado) %>%
+  summarise(
+    total_serem_acompanhados = sum(`Qtd. beneficiários a serem acompanhados`),
+    total_populacao = sum(População),
+    proporcao = total_serem_acompanhados / total_populacao
+  ) %>%
+  mutate(
+    porcentagem = round(proporcao * 100, 1)
+  ) %>%
+  arrange(proporcao)  # Ordem crescente
+
+ggplot(dados_grafico2, aes(x = reorder(Estado, proporcao), y = proporcao)) +
+  geom_col(fill = "#1f77b4") +
+  geom_text(aes(label = paste0(porcentagem, "%")), 
+            hjust = -0.1, 
+            color = "black", 
+            size = 3.5) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                   expand = expansion(mult = c(0, 0.15))) +
+  labs(title = "Beneficiários a serem acompanhados por UF",
+       x = "UF",
+       y = "Proporção de acompanhados") +
+  theme_minimal() +
+  coord_flip()
+```
+
 
 
 ```{r}
@@ -146,46 +184,23 @@ ggplot(dados_grafico, aes(x = reorder(Estado, Proporcao), y = Proporcao)) +
             vjust = 0.4) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
-    title = "Beneficiários Acompanhados por UF",
+    title = "Beneficiários efetivamente acompanhados por UF",
     x = "UF",
-    y = "Proporção de Acompanhamento"
+    y = "Proporção de acompanhados"
   ) +
   theme_minimal() +
   coord_flip() 
 ```
 
-```{r}
 
-dados_grafico1 <- bolsa_estado %>%
-  group_by(Estado) %>%
-  summarise(
-    total_acompanhados = sum(`Qtd. beneficiários acompanhados`),
-    total_populacao = sum(População),
-    proporcao = total_acompanhados / total_populacao
-  ) %>%
-  mutate(
-    porcentagem = round(proporcao * 100, 1)
-  ) 
+# Por região
 
-ggplot(dados_grafico1, aes(x = reorder(Estado, proporcao), y = proporcao)) +
-  geom_col(fill = "steelblue") +
-  geom_text(aes(label = paste0(porcentagem, "%")), 
-            hjust = -0.1, 
-            color = "black", 
-            size = 3) +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
-                   expand = expansion(mult = c(0, 0.15))) +
-  labs(title = "Beneficiários Acompanhados por UF",
-       x = "UF",
-       y = "Proporção de ") +
-  theme_minimal() +
-  coord_flip()
-```
+
 
 
 ```{r}
-dados_grafico2 <- bolsa_estado %>%
-  group_by(Estado) %>%
+dados_grafico2 <- bolsa_regiao %>%
+  group_by(Região) %>%
   summarise(
     total_serem_acompanhados = sum(`Qtd. beneficiários a serem acompanhados`),
     total_populacao = sum(População),
@@ -196,7 +211,7 @@ dados_grafico2 <- bolsa_estado %>%
   ) %>%
   arrange(proporcao)  # Ordem crescente
 
-ggplot(dados_grafico2, aes(x = reorder(Estado, proporcao), y = proporcao)) +
+ggplot(dados_grafico2, aes(x = reorder(Região, proporcao), y = proporcao)) +
   geom_col(fill = "#1f77b4") +
   geom_text(aes(label = paste0(porcentagem, "%")), 
             hjust = -0.1, 
@@ -204,45 +219,47 @@ ggplot(dados_grafico2, aes(x = reorder(Estado, proporcao), y = proporcao)) +
             size = 3.5) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1),
                    expand = expansion(mult = c(0, 0.15))) +
-  labs(title = "Proporção de Beneficiários a Serem Acompanhados pela População da UF",
-       x = "Estado",
-       y = "Proporção") +
-  theme_minimal() +
-  coord_flip()
-```
-
-
-```{r}
-praticas$Antropometria <- as.numeric(praticas$Antropometria)
-praticas <- praticas[1:(nrow(praticas)- 4), ]
-```
-
-
-
-```{r}
-
-# Calcular totais por UF
-dados_grafico <- praticas %>%
-  group_by(Uf) %>%
-  summarise(Total_Antropometria = sum(Antropometria)) %>%
-  arrange(Total_Antropometria) %>%  # Ordenar em ordem crescente
-  mutate(Porcentagem = Total_Antropometria/sum(Total_Antropometria)*100)
-
-# Criar gráfico
-ggplot(dados_grafico, aes(x = reorder(Uf, Total_Antropometria), 
-                         y = Total_Antropometria)) +
-  geom_col(fill = "#4e79a7") +
-  geom_text(aes(label = paste0(round(Porcentagem, 1), "%")), 
-            hjust = -0.1, 
-            color = "black", 
-            size = 3.5) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
-  labs(title = "Total de Antropometria por UF",
+  labs(title = "Beneficiários a serem acompanhados por UF",
        x = "UF",
-       y = "Quantidade de Antropometrias",
-       caption = "Fonte: Banco de dados 'praticas'") +
+       y = "Proporção de acompanhados") +
   theme_minimal() +
   coord_flip()
+```
+
+
+
+
+
+
+```{r}
+dados_grafico <- bolsa_regiao %>%
+  group_by(Região) %>%
+  summarise(
+    sum_acomp = sum(`Qtd. beneficiários acompanhados`),
+    sum_total_acomp = sum(`Qtd. beneficiários a serem acompanhados`),
+    Proporcao = sum_acomp / sum_total_acomp
+  ) %>%
+  mutate(
+    Porcentagem = round(Proporcao * 100, 1),
+    Estado = factor(Região)
+  )
+
+# Criando o gráfico
+ggplot(dados_grafico, aes(x = reorder(Região, Proporcao), y = Proporcao)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = paste0(Porcentagem, "%")), 
+            hjust = 1.1, 
+            color = "white", 
+            size = 3,
+            vjust = 0.4) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Beneficiários efetivamente acompanhados por UF",
+    x = "Região",
+    y = "Proporção de acompanhados"
+  ) +
+  theme_minimal() +
+  coord_flip() 
 ```
 
 
