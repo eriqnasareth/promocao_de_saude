@@ -33,8 +33,15 @@ praticas$Ibge <- as.double(praticas$Ibge)
 ```
 
 ```{r}
+names(populacao)[7] <- "populacao_cadastrada"
+```
+
+
+```{r}
 populacao <- populacao %>%
-  select(Ibge, População)
+  select(Ibge, populacao_cadastrada)
+
+names(populacao)[2] <- "População"
 ```
 
 
@@ -67,7 +74,7 @@ dados <- bolsa_municipio %>%
   mutate(Proporcao = `Qtd. beneficiários acompanhados` / `Qtd. beneficiários a serem acompanhados`,
          Porcentagem = round(Proporcao * 100, 1)) %>%
   arrange(desc(Proporcao)) %>%
-  slice_head( n = 5)
+  slice_head( n = 10)
 
 # Criando o gráfico
 ggplot(dados, aes(x = reorder(Município, Proporcao), y = Proporcao)) +
@@ -90,7 +97,7 @@ dados <- bolsa_municipio %>%
   mutate(Proporcao = `Qtd. beneficiários acompanhados` / `Qtd. beneficiários a serem acompanhados`,
          Porcentagem = round(Proporcao * 100, 1)) %>%
   arrange(desc(Proporcao)) %>%
-  slice_tail( n = 5)
+  slice_tail( n = 10)
 
 # Criando o gráfico
 ggplot(dados, aes(x = reorder(Município, Proporcao), y = Proporcao)) +
@@ -140,7 +147,7 @@ ggplot(dados_grafico, aes(x = reorder(Estado, Proporcao), y = Proporcao)) +
             size = 3.5) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
-    title = "Top 10 Estados com Maior Proporção de Beneficiários Acompanhados",
+    title = "Proporção de Beneficiários Acompanhados",
     x = "Estado",
     y = "Proporção de Acompanhamento"
   ) +

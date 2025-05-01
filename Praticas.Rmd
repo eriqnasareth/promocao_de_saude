@@ -1,0 +1,108 @@
+---
+title: "Promoção de praticas em saude"
+author: "Erick Nasareth"
+date: "2025-04-27"
+output: html_document
+---
+
+```{r}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("tidyverse", "readxl")
+```
+
+Carregando os bancos que contem promocao em saude relacionado ao bolsa familia e a população, todos atualizados para 2023. 
+
+```{r}
+
+#bolsa <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
+populacao <- read_xls("Data/pop_cadastrada_2023.xls")
+#atendimento <- read_xlsx("Data/atendimento_saude_2023.xlsx")
+#palestras <- read_xlsx("Data/palestras_municipio_2023.xlsx") #temas
+praticas <- read_xlsx("Data/praticas2023.xlsx")
+
+```
+
+
+ajustes necessários para trabalhar com os bancos
+
+```{r}
+
+populacao <- rename(populacao, Ibge = IBGE)
+praticas$Ibge <- as.double(praticas$Ibge)
+
+```
+
+```{r}
+praticas$Antropometria <- as.numeric(praticas$Antropometria)
+praticas$`Práticas corporais / atividade` <- as.numeric(praticas$`Práticas corporais / atividade`)
+praticas$`Verificação da situação vacina` <- as.numeric(praticas$`Verificação da situação vacina`)
+```
+
+
+```{r}
+names(populacao)[7] <- "populacao_cadastrada"
+```
+
+
+```{r}
+populacao <- populacao %>%
+  select(Ibge, populacao_cadastrada)
+
+names(populacao)[2] <- "População"
+```
+
+
+```{r}
+praticas_mun <- praticas %>%
+  select(Ibge, Municipio, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`)
+
+praticas_uf <- praticas %>%
+  select(Ibge, Uf, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`)
+```
+
+
+```{r}
+
+praticas_mun <- merge(praticas_mun, populacao, by="Ibge")
+praticas_uf  <- merge(praticas_uf, populacao, by="Ibge")
+
+```
+
+
+```{r}
+praticas_uf_por100000 <- praticas_uf %>%
+  select(Uf, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`) %>%
+  group_by(Uf) %>%
+  summarise(Antropometria = format(sum(populacao) / (sum(Antropometria) * 100000), nsmall = 2) , Corporais = format(sum(populacao) / (sum(`Práticas corporais / atividade`) * 100000), nsmall = 2), Vacinas = format(sum(populacao) / (sum(`Verificação da situação vacina`) * 100000), nsmall = 2))
+```
+
+```{r}
+praticas_uf_por100000$Antropometria <- as.numeric(praticas_uf_por100000$Antropometria)
+praticas_uf_por100000$Corporais <- as.numeric(praticas_uf_por100000$Corporais)
+praticas_uf_por100000$Vacinas <- as.numeric(praticas_uf_por100000$Vacinas)
+```
+
+
+# Gráficos
+
+```{r}
+ggplot(praticas_uf_por100000, aes(x = reorder(Uf, Antropometria), y = Antropometria)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = paste0((Antropometria))), 
+            hjust = 1.1, 
+            color = "white", 
+            size = 3.5) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Proporção de Beneficiários Acompanhados",
+    x = "Estado",
+    y = "Proporção de Acompanhamento"
+  ) +
+  theme_minimal() +
+  coord_flip() 
+```
+
+
+
+
+
