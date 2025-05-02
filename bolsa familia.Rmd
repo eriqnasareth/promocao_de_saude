@@ -5,13 +5,12 @@ date: "2025-04-20"
 output: pdf_document
 ---
 
-```{r}
+```{r echo =FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "readxl", "knitr")
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-Carregando os bancos que contem promocao em saude relacionado ao bolsa familia e a população, todos atualizados para 2023. 
 
 ```{r}
 
@@ -23,7 +22,6 @@ praticas <- read_xlsx("Data/praticas2023.xlsx")
 
 ```
 
-ajustes necessários para trabalhar com os bancos
 
 ```{r}
 
@@ -52,7 +50,6 @@ bolsa <- bolsa %>%
 ```
 
 
-selecionando colunas que serão utilizadas em cada banco e criando variaveis para cada nivel de separacao do Estado Brasileiro
 
 ```{r}
 bolsa_municipio <- bolsa %>%
@@ -80,14 +77,15 @@ bolsa_regiao <- merge(bolsa_regiao, populacao, by="Ibge")
 
 # Por municipio
 
-## Distribuição das porcentagens de beneficiários acompanhados por municipio
+
 
 ```{r}
 
 bolsa_municipio %>% 
   ggplot(aes(x = `Perc. cobertura de beneficiários acompanhados (%)`)) +
   geom_histogram(fill = "steelblue") +
-  labs(x = "Percentual de beneficiários acompanhados", y = "Quantidade", title = "Distribuição dos municipios por percentual de beneficiários acompanhados")
+  labs(x = "Percentual de beneficiários acompanhados", y = "Quantidade", title = "Distribuição dos municipios por percentual de beneficiários acompanhados") +
+  theme(plot.title = element_text(size = 12))
 
 ```
 
@@ -95,7 +93,6 @@ bolsa_municipio %>%
 
 
 
-## Municípios com menos proporção de beneficiários acompanhados
 
 ```{r}
 dados <- bolsa_municipio %>%
@@ -105,7 +102,7 @@ dados <- bolsa_municipio %>%
   slice_tail( n = 10)
 
 # Criando o gráfico
-ggplot(dados, aes(x = reorder(Mun_uf, Proporcao), y = Proporcao)) +
+ggplot(dados, aes(x = reorder(Mun_uf, -Proporcao), y = Proporcao)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = paste0(Porcentagem, "%")), vjust = 0.4) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
@@ -115,6 +112,7 @@ ggplot(dados, aes(x = reorder(Mun_uf, Proporcao), y = Proporcao)) +
     y = "Proporção de Acompanhamento"
   ) +
   theme_minimal() +
+  theme(plot.title = element_text(size = 12)) +
   coord_flip()
 ```
 
@@ -144,7 +142,7 @@ dados_grafico2 <- bolsa_estado %>%
   ) %>%
   arrange(proporcao)  # Ordem crescente
 
-ggplot(dados_grafico2, aes(x = reorder(Estado, proporcao), y = proporcao)) +
+ggplot(dados_grafico2, aes(x = reorder(Estado, -proporcao), y = proporcao)) +
   geom_col(fill = "#1f77b4") +
   geom_text(aes(label = paste0(porcentagem, "%")), 
             hjust = -0.1, 
@@ -175,7 +173,7 @@ dados_grafico <- bolsa_estado %>%
   )
 
 # Criando o gráfico
-ggplot(dados_grafico, aes(x = reorder(Estado, Proporcao), y = Proporcao)) +
+ggplot(dados_grafico, aes(x = reorder(Estado, -Proporcao), y = Proporcao)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = paste0(Porcentagem, "%")), 
             hjust = 1.1, 
@@ -211,7 +209,7 @@ dados_grafico2 <- bolsa_regiao %>%
   ) %>%
   arrange(proporcao)  # Ordem crescente
 
-ggplot(dados_grafico2, aes(x = reorder(Região, proporcao), y = proporcao)) +
+ggplot(dados_grafico2, aes(x = reorder(Região, -proporcao), y = proporcao)) +
   geom_col(fill = "#1f77b4") +
   geom_text(aes(label = paste0(porcentagem, "%")), 
             hjust = -0.1, 
@@ -219,8 +217,8 @@ ggplot(dados_grafico2, aes(x = reorder(Região, proporcao), y = proporcao)) +
             size = 3.5) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1),
                    expand = expansion(mult = c(0, 0.15))) +
-  labs(title = "Beneficiários a serem acompanhados por UF",
-       x = "UF",
+  labs(title = "Beneficiários a serem acompanhados por Região",
+       x = "Região",
        y = "Proporção de acompanhados") +
   theme_minimal() +
   coord_flip()
@@ -245,7 +243,7 @@ dados_grafico <- bolsa_regiao %>%
   )
 
 # Criando o gráfico
-ggplot(dados_grafico, aes(x = reorder(Região, Proporcao), y = Proporcao)) +
+ggplot(dados_grafico, aes(x = reorder(Região, -Proporcao), y = Proporcao)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = paste0(Porcentagem, "%")), 
             hjust = 1.1, 
@@ -254,7 +252,7 @@ ggplot(dados_grafico, aes(x = reorder(Região, Proporcao), y = Proporcao)) +
             vjust = 0.4) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
-    title = "Beneficiários efetivamente acompanhados por UF",
+    title = "Beneficiários efetivamente acompanhados por Região",
     x = "Região",
     y = "Proporção de acompanhados"
   ) +

@@ -2,15 +2,18 @@
 title: "Promoção de praticas em saude"
 author: "Erick Nasareth"
 date: "2025-04-27"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
-```{r}
+```{r echo =FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "readxl")
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
-Carregando os bancos que contem promocao em saude relacionado ao bolsa familia e a população, todos atualizados para 2023. 
+
 
 ```{r}
 
@@ -23,14 +26,22 @@ praticas <- read_xlsx("Data/praticas2023.xlsx")
 ```
 
 
-ajustes necessários para trabalhar com os bancos
-
 ```{r}
 
 populacao <- rename(populacao, Ibge = IBGE)
 praticas$Ibge <- as.double(praticas$Ibge)
 
 ```
+
+
+```{r}
+
+praticas$Antropometria <- gsub("\\.", "", praticas$Antropometria)
+praticas$`Práticas corporais / atividade` <- gsub("\\.", "", praticas$`Práticas corporais / atividade`)
+praticas$`Verificação da situação vacina` <- gsub("\\.", "", praticas$`Verificação da situação vacina`)
+
+```
+
 
 ```{r}
 praticas$Antropometria <- as.numeric(praticas$Antropometria)
@@ -46,9 +57,12 @@ names(populacao)[7] <- "populacao_cadastrada"
 
 ```{r}
 populacao <- populacao %>%
-  select(Ibge, populacao_cadastrada)
+  select(Ibge, populacao_cadastrada, Região)
 
 names(populacao)[2] <- "População"
+
+populacao <- populacao %>%
+  filter(População > 0)
 ```
 
 
@@ -58,6 +72,9 @@ praticas_mun <- praticas %>%
 
 praticas_uf <- praticas %>%
   select(Ibge, Uf, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`)
+
+praticas_regiao <- praticas %>%
+  select(Ibge, Uf, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`)
 ```
 
 
@@ -65,44 +82,162 @@ praticas_uf <- praticas %>%
 
 praticas_mun <- merge(praticas_mun, populacao, by="Ibge")
 praticas_uf  <- merge(praticas_uf, populacao, by="Ibge")
+praticas_regiao  <- merge(praticas_regiao, populacao, by="Ibge")
+```
 
+
+# Municipio
+
+```{r}
+# Calculando as taxas por 1.000 habitantes
+dados_taxas_mun <- praticas_mun %>%
+  summarise(
+    Taxa_Antropometria = (Antropometria / População) * 1000,
+    Taxa_Praticas = `Práticas corporais / atividade` / População * 1000,
+    Taxa_Vacinacao = `Verificação da situação vacina` / População * 1000
+  ) %>%
+  ungroup()
+
+dados_taxas_mun <- dados_taxas_mun %>%
+  filter(Taxa_Vacinacao != 0, Taxa_Praticas != 0, Taxa_Antropometria != 0)
 ```
 
 
 ```{r}
-praticas_uf_por100000 <- praticas_uf %>%
-  select(Uf, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`) %>%
+dados_taxas_mun %>% 
+  ggplot(aes(x = Taxa_Antropometria)) +
+  geom_histogram(fill = "#76c893") +
+  labs(title = "Promoção de práticas antropometricas em municípios 1000/habitantes", x = "Práticas a cada 1000 habitantes", y = "Quantidade de municípios")
+```
+
+
+```{r}
+dados_taxas_mun %>% 
+  ggplot(aes(x = Taxa_Praticas)) +
+  geom_histogram(fill = "#f67e7d") +
+  labs(x = "Práticas a cada 1000 habitantes", y = "Quantidade de municípios", title = "Promoção de praticas corporais em municípios 1000/habitantes")
+```
+
+```{r}
+dados_taxas_mun %>% 
+  ggplot(aes(x = Taxa_Vacinacao)) +
+  geom_histogram(fill = "#c8b6ff") +
+  labs(x = "Práticas a cada 1000 habitantes", y = "Quantidade de municípios", title = "Promoção de praticas de vacinação em municípios 1000/habitantes")
+```
+
+
+# UF 
+
+```{r}
+# Calculando as taxas por 100.000 habitantes
+dados_taxas <- praticas_uf %>%
   group_by(Uf) %>%
-  summarise(Antropometria = format(sum(populacao) / (sum(Antropometria) * 100000), nsmall = 2) , Corporais = format(sum(populacao) / (sum(`Práticas corporais / atividade`) * 100000), nsmall = 2), Vacinas = format(sum(populacao) / (sum(`Verificação da situação vacina`) * 100000), nsmall = 2))
+  summarise(
+    Taxa_Antropometria = sum(Antropometria) / sum(População) * 100000,
+    Taxa_Praticas = sum(`Práticas corporais / atividade`) / sum(População) * 100000,
+    Taxa_Vacinacao = sum(`Verificação da situação vacina`) / sum(População) * 100000
+  ) %>%
+  ungroup()
 ```
 
-```{r}
-praticas_uf_por100000$Antropometria <- as.numeric(praticas_uf_por100000$Antropometria)
-praticas_uf_por100000$Corporais <- as.numeric(praticas_uf_por100000$Corporais)
-praticas_uf_por100000$Vacinas <- as.numeric(praticas_uf_por100000$Vacinas)
-```
 
-
-# Gráficos
 
 ```{r}
-ggplot(praticas_uf_por100000, aes(x = reorder(Uf, Antropometria), y = Antropometria)) +
-  geom_col(fill = "steelblue") +
-  geom_text(aes(label = paste0((Antropometria))), 
-            hjust = 1.1, 
-            color = "white", 
-            size = 3.5) +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  labs(
-    title = "Proporção de Beneficiários Acompanhados",
-    x = "Estado",
-    y = "Proporção de Acompanhamento"
-  ) +
+ggplot(dados_taxas, aes(x = reorder(Uf, -Taxa_Antropometria), y = Taxa_Antropometria)) +
+  geom_bar(stat = "identity", fill = "#76c893") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Antropometria, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Promoção de praticas em Antropometria por 100.000 habitantes por UF",
+       x = "UF",
+       y = "Taxa por 100.000 hab.") +
   theme_minimal() +
-  coord_flip() 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
 ```
 
 
+```{r}
+ggplot(dados_taxas, aes(x = reorder(Uf, -Taxa_Praticas), y = Taxa_Praticas)) +
+  geom_bar(stat = "identity", fill = "#f67e7d") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Praticas, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Promoção de Práticas Corporais por 100.000 habitantes por UF",
+       x = "UF",
+       y = "Taxa por 100.000 hab.") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
 
+
+```{r}
+ggplot(dados_taxas, aes(x = reorder(Uf, -Taxa_Vacinacao), y = Taxa_Vacinacao)) +
+  geom_bar(stat = "identity", fill = "#c8b6ff") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Vacinacao, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Promoção de atividades vacinais por 100.000 habitantes por UF",
+       x = "UF",
+       y = "Taxa por 100.000 hab.") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+# Região
+
+```{r}
+# Calculando as taxas por 100.000 habitantes
+dados_taxas_regiao <- praticas_uf %>%
+  group_by(Região) %>%
+  summarise(
+    Taxa_Antropometria = sum(Antropometria) / sum(População) * 100000,
+    Taxa_Praticas = sum(`Práticas corporais / atividade`) / sum(População) * 100000,
+    Taxa_Vacinacao = sum(`Verificação da situação vacina`) / sum(População) * 100000
+  ) %>%
+  ungroup()
+```
+
+
+```{r}
+ggplot(dados_taxas_regiao, aes(x = reorder(Região, -Taxa_Antropometria), y = Taxa_Antropometria)) +
+  geom_bar(stat = "identity", fill = "#76c893") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Antropometria, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Promoção de praticas em Antropometria por 100.000 habitantes / região",
+       x = "Região",
+       y = "Taxa por 100.000 hab.") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+```{r}
+ggplot(dados_taxas_regiao, aes(x = reorder(Região, -Taxa_Praticas), y = Taxa_Praticas)) +
+  geom_bar(stat = "identity", fill = "#f67e7d") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Praticas, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Promoção de Práticas Corporais por 100.000 habitantes por Região",
+       x = "Região",
+       y = "Taxa por 100.000 hab.") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+```{r}
+ggplot(dados_taxas_regiao, aes(x = reorder(Região, -Taxa_Vacinacao), y = Taxa_Vacinacao)) +
+  geom_bar(stat = "identity", fill = "#c8b6ff") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Vacinacao, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Promoção de atividades vacinais por 100.000 habitantes por Região",
+       x = "Região",
+       y = "Taxa por 100.000 hab.") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
 
 
