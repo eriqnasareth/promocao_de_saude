@@ -107,7 +107,7 @@ ggplot(dados, aes(x = reorder(Mun_uf, -Proporcao), y = Proporcao)) +
   geom_text(aes(label = paste0(Porcentagem, "%")), vjust = 0.4) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
-    title = "Proporção de Beneficiários Acompanhados por Município",
+    title = "Proporção dos menores beneficiários acompanhados por município",
     x = "Município",
     y = "Proporção de Acompanhamento"
   ) +
@@ -150,7 +150,7 @@ ggplot(dados_grafico2, aes(x = reorder(Estado, -proporcao), y = proporcao)) +
             size = 3.5) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1),
                    expand = expansion(mult = c(0, 0.15))) +
-  labs(title = "Beneficiários a serem acompanhados por UF",
+  labs(title = "Beneficiários por UF",
        x = "UF",
        y = "Proporção de acompanhados") +
   theme_minimal() +
@@ -182,7 +182,7 @@ ggplot(dados_grafico, aes(x = reorder(Estado, -Proporcao), y = Proporcao)) +
             vjust = 0.4) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
-    title = "Beneficiários efetivamente acompanhados por UF",
+    title = "Acompanhados por UF",
     x = "UF",
     y = "Proporção de acompanhados"
   ) +
@@ -209,6 +209,10 @@ dados_grafico2 <- bolsa_regiao %>%
   ) %>%
   arrange(proporcao)  # Ordem crescente
 
+
+media_regional <- dados_grafico2 %>%
+  summarise(media = sum(proporcao) / 5)
+
 ggplot(dados_grafico2, aes(x = reorder(Região, -proporcao), y = proporcao)) +
   geom_col(fill = "#1f77b4") +
   geom_text(aes(label = paste0(porcentagem, "%")), 
@@ -220,6 +224,13 @@ ggplot(dados_grafico2, aes(x = reorder(Região, -proporcao), y = proporcao)) +
   labs(title = "Beneficiários a serem acompanhados por Região",
        x = "Região",
        y = "Proporção de acompanhados") +
+  geom_hline(aes(yintercept = media_regional$media),
+             color    = "black",
+             linetype = "dashed",
+             size     = 1) +
+  annotate("text", x = 0, y = media_regional$media,
+           label = paste("Média por regiões: ", round((media_regional$media) *100, 2)),
+           hjust = 0.1, vjust = -0.5, color = "black") +
   theme_minimal() +
   coord_flip()
 ```
@@ -230,6 +241,7 @@ ggplot(dados_grafico2, aes(x = reorder(Região, -proporcao), y = proporcao)) +
 
 
 ```{r}
+
 dados_grafico <- bolsa_regiao %>%
   group_by(Região) %>%
   summarise(
@@ -241,6 +253,10 @@ dados_grafico <- bolsa_regiao %>%
     Porcentagem = round(Proporcao * 100, 1),
     Estado = factor(Região)
   )
+
+
+media_regional <- dados_grafico %>%
+  summarise(media = sum(Proporcao) / 5)
 
 # Criando o gráfico
 ggplot(dados_grafico, aes(x = reorder(Região, -Proporcao), y = Proporcao)) +
@@ -257,6 +273,13 @@ ggplot(dados_grafico, aes(x = reorder(Região, -Proporcao), y = Proporcao)) +
     y = "Proporção de acompanhados"
   ) +
   theme_minimal() +
+  geom_hline(aes(yintercept = media_regional$media),
+             color    = "black",
+             linetype = "dashed",
+             size     = 1) +
+  annotate("text", x = 0, y = media_regional$media,
+           label = paste("Média por regiões: ", round((media_regional$media) *100, 2)),
+           hjust = 1.1, vjust = -0.5, color = "black") +
   coord_flip() 
 ```
 
