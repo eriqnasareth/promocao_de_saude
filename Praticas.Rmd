@@ -7,10 +7,9 @@ output:
   pdf_document: default
 ---
 
-```{r echo =FALSE}
+```{r }
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "readxl")
-knitr::opts_chunk$set(echo = FALSE)
 ```
 
 
