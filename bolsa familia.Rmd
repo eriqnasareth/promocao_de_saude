@@ -3,6 +3,7 @@ title: "Bolsa familia"
 author: "Erick Nasareth"
 date: "2025-04-20"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
