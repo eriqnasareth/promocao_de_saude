@@ -1,0 +1,673 @@
+---
+title: "Promoção de práticas e dados do bolsa familia"
+author: "Erick Nasareth"
+output: pdf_document
+---
+
+Este é um trabalho desenvolvido para a disciplina de laboratório em estatística e tem como objetivo verificar dados sobre o bolsa família e a dados sobre a promoção de práticas de saúde. Todos os códigos podem ser verificados no meu github pessoal com o arquivo rmd com o nome de "compilado" em: (https://github.com/eriqnasareth/promocao_de_saude.git)
+
+Alguns outros projetos podem ser encontrados no mesmo perfil do github, onde faço outros tipos de manipulações e gráficos.
+
+
+```{r }
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("tidyverse", "readxl", "knitr")
+```
+
+
+# Promoção de práticas
+
+```{r}
+
+#bolsa <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
+populacao <- read_xls("Data/pop_cadastrada_2023.xls")
+#atendimento <- read_xlsx("Data/atendimento_saude_2023.xlsx")
+#palestras <- read_xlsx("Data/palestras_municipio_2023.xlsx") #temas
+praticas <- read_xlsx("Data/praticas2023.xlsx")
+
+```
+
+
+```{r}
+
+populacao <- rename(populacao, Ibge = IBGE)
+praticas$Ibge <- as.double(praticas$Ibge)
+
+```
+
+
+```{r}
+
+praticas$Antropometria <- gsub("\\.", "", praticas$Antropometria)
+praticas$`Práticas corporais / atividade` <- gsub("\\.", "", praticas$`Práticas corporais / atividade`)
+praticas$`Verificação da situação vacina` <- gsub("\\.", "", praticas$`Verificação da situação vacina`)
+
+```
+
+
+```{r}
+praticas$Antropometria <- as.numeric(praticas$Antropometria)
+praticas$`Práticas corporais / atividade` <- as.numeric(praticas$`Práticas corporais / atividade`)
+praticas$`Verificação da situação vacina` <- as.numeric(praticas$`Verificação da situação vacina`)
+```
+
+
+```{r}
+names(populacao)[7] <- "populacao_cadastrada"
+```
+
+
+```{r}
+populacao <- populacao %>%
+  select(Ibge, populacao_cadastrada, Região)
+
+names(populacao)[2] <- "População"
+
+populacao <- populacao %>%
+  filter(População > 0)
+```
+
+
+```{r}
+praticas_mun <- praticas %>%
+  select(Ibge, Municipio, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`)
+
+praticas_uf <- praticas %>%
+  select(Ibge, Uf, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`)
+
+praticas_regiao <- praticas %>%
+  select(Ibge, Uf, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`)
+```
+
+
+```{r}
+
+praticas_mun <- merge(praticas_mun, populacao, by="Ibge")
+praticas_uf  <- merge(praticas_uf, populacao, by="Ibge")
+praticas_regiao  <- merge(praticas_regiao, populacao, by="Ibge")
+```
+
+
+## Municipio
+
+```{r}
+# Calculando as taxas por 1.000 habitantes
+dados_taxas_mun <- praticas_mun %>%
+  summarise(
+    Taxa_Antropometria = (Antropometria / População) * 100000,
+    Taxa_Praticas = `Práticas corporais / atividade` / População * 100000,
+    Taxa_Vacinacao = `Verificação da situação vacina` / População * 100000
+  ) %>%
+  ungroup()
+
+dados_taxas_mun <- dados_taxas_mun %>%
+  filter(Taxa_Vacinacao != 0, Taxa_Praticas != 0, Taxa_Antropometria != 0)
+```
+
+## Promoção de Práticas a cada 100.000 habitantes em municipios.
+
+```{r}
+dados_taxas_mun %>% 
+  ggplot(aes(x = Taxa_Antropometria)) +
+  geom_histogram(fill = "steelblue") +
+  labs(title = "Práticas Antropométricas", x = "Práticas a cada 100.000 habitantes", y = "Quantidade de Municípios")
+```
+
+
+```{r}
+dados_taxas_mun %>% 
+  ggplot(aes(x = Taxa_Praticas)) +
+  geom_histogram(fill = "steelblue") +
+  labs(x = "Práticas a cada 100.000 habitantes", y = "Quantidade de Municípios", title = "Práticas Corporais")
+```
+
+```{r}
+dados_taxas_mun %>% 
+  ggplot(aes(x = Taxa_Vacinacao)) +
+  geom_histogram(fill = "steelblue") +
+  labs(x = "Práticas a cada 100.000 habitantes", y = "Quantidade de municípios", title = "Praticas de Vacinação")
+```
+
+
+## UF 
+
+```{r}
+# Calculando as taxas por 100.000 habitantes
+dados_taxas <- praticas_uf %>%
+  group_by(Uf, Região) %>%
+  summarise(
+    Taxa_Antropometria = sum(Antropometria) / sum(População) * 100000,
+    Taxa_Praticas = sum(`Práticas corporais / atividade`) / sum(População) * 100000,
+    Taxa_Vacinacao = sum(`Verificação da situação vacina`) / sum(População) * 100000
+  ) %>%
+  ungroup()
+```
+
+
+
+```{r}
+
+media_global <- round(sum(dados_taxas$Taxa_Antropometria) / nrow(dados_taxas), 2)
+
+ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Antropometria), y = Taxa_Antropometria, fill = Região)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Antropometria, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Promoção de Práticas Antropométricas por 100.000 habitantes por UF",
+       x = "UF",
+       y = "Taxa por 100.000 hab.") +
+  geom_hline(
+    yintercept = media_global,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = media_global,
+    label = paste("Média por UF: ", media_global),
+    hjust = -0.5, vjust = 0.5,
+    color = "black"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+```{r}
+media_global <- round(sum(dados_taxas$Taxa_Praticas) / nrow(dados_taxas), 2)
+
+ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Praticas), y = Taxa_Praticas, fill = Região)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Praticas, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Promoção de Práticas Corporais por 100.000 habitantes por UF",
+       x = "UF",
+       y = "Taxa por 100.000 hab.") +
+  geom_hline(
+    yintercept = media_global,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = media_global,
+    label = paste("Média por UF: ", media_global),
+    hjust = -1, vjust = 0.1,
+    color = "black"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+```{r}
+media_global <- round(sum(dados_taxas$Taxa_Vacinacao) / nrow(dados_taxas), 2)
+
+
+ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Vacinacao), y = Taxa_Vacinacao, fill = Região)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Vacinacao, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Promoção de Atividades Vacinais por 100.000 habitantes por UF",
+       x = "UF",
+       y = "Taxa por 100.000 hab.") +
+  geom_hline(
+    yintercept = media_global,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = media_global,
+    label = paste("Média por UF: ", media_global),
+    hjust = -1, vjust = 0.5,
+    color = "black"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+## Promoção de Práticas ... a cada 100.000 habitantes por região
+
+
+
+```{r}
+# Calculando as taxas por 100.000 habitantes
+dados_taxas_regiao <- praticas_uf %>%
+  group_by(Região) %>%
+  summarise(
+    Taxa_Antropometria = sum(Antropometria) / sum(População) * 100000,
+    Taxa_Praticas = sum(`Práticas corporais / atividade`) / sum(População) * 100000,
+    Taxa_Vacinacao = sum(`Verificação da situação vacina`) / sum(População) * 100000
+  ) %>%
+  ungroup()
+```
+
+
+```{r}
+media_global <- round(sum(dados_taxas_regiao$Taxa_Antropometria) / nrow(dados_taxas_regiao), 2)
+
+ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Antropometria), y = Taxa_Antropometria, fill = Região)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Antropometria, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Praticas em Antropometria",
+       x = "Região",
+       y = "Taxa por 100.000 hab.") +
+  geom_hline(
+    yintercept = media_global,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = media_global,
+    label = paste("Média por Região: ", media_global),
+    hjust = -0.1, vjust = 0.5,
+    color = "black"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+```{r}
+media_global <- round(sum(dados_taxas_regiao$Taxa_Praticas) / nrow(dados_taxas_regiao), 2)
+
+ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Praticas), y = Taxa_Praticas, fill = Região)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Praticas, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Práticas Corporais",
+       x = "Região",
+       y = "Taxa por 100.000 hab.") +
+  geom_hline(
+    yintercept = media_global,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = media_global,
+    label = paste("Média por Região: ", media_global),
+    hjust = 0.5, vjust = 0.5,
+    color = "black"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+```{r}
+media_global <- round(sum(dados_taxas_regiao$Taxa_Vacinacao) / nrow(dados_taxas_regiao), 2)
+
+ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Vacinacao), y = Taxa_Vacinacao, fill = Região)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.2f", round(Taxa_Vacinacao, 2))), 
+            vjust = 0.4, size = 3, color = "black") +
+  labs(title = "Atividades vacinais",
+       x = "Região",
+       y = "Taxa por 100.000 hab.") +
+  geom_hline(
+    yintercept = media_global,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = media_global,
+    label = paste("Média por Região: ", media_global),
+    hjust = -0.5, vjust = 0.5,
+    color = "black"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+# Bolsa Família
+
+
+```{r}
+
+bolsa <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
+populacao <- read_xls("Data/pop_cadastrada_2023.xls")
+#atendimento <- read_xlsx("Data/atendimento_saude_2023.xlsx")
+#palestras <- read_xlsx("Data/palestras_municipio_2023.xlsx") #temas
+praticas <- read_xlsx("Data/praticas2023.xlsx")
+
+```
+
+
+```{r}
+
+bolsa <- rename(bolsa, Ibge = IBGE)
+populacao <- rename(populacao, Ibge = IBGE)
+
+```
+
+```{r}
+names(populacao)[7] <- "populacao_cadastrada"
+```
+
+
+```{r}
+populacao <- populacao %>%
+  select(Ibge, populacao_cadastrada, Região)
+
+names(populacao)[2] <- "População"
+```
+
+
+
+```{r}
+bolsa <- bolsa %>%
+  mutate(Mun_uf = str_c(bolsa$Município, " (", bolsa$Estado, ")"))
+```
+
+
+
+```{r}
+bolsa_municipio <- bolsa %>%
+  select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, `Perc. cobertura de beneficiários acompanhados (%)`, Mun_uf)
+
+bolsa_estado <- bolsa %>%
+  select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`)
+
+bolsa_regiao <- bolsa %>%
+  select(Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`)
+
+bolsa_brasil <- bolsa %>%
+  select(Estado, Município, Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`)
+```
+
+adicionando a informação de populacao por municipio
+
+```{r}
+bolsa_municipio <- merge(bolsa_municipio, populacao, by="Ibge")
+bolsa_estado <- merge(bolsa_estado, populacao, by="Ibge")
+bolsa_brasil <- merge(bolsa_brasil, populacao, by="Ibge")
+bolsa_regiao <- merge(bolsa_regiao, populacao, by="Ibge")
+```
+
+
+## Por municipio
+
+
+
+```{r}
+
+bolsa_municipio %>% 
+  ggplot(aes(x = `Perc. cobertura de beneficiários acompanhados (%)`)) +
+  geom_histogram(fill = "steelblue") +
+  labs(x = "Percentual de beneficiários acompanhados", y = "Quantidade", title = "Distribuição dos municipios por percentual de beneficiários acompanhados") +
+  theme(plot.title = element_text(size = 12))
+
+```
+
+
+
+
+
+
+```{r}
+dados <- bolsa_municipio %>%
+  mutate(Proporcao = `Qtd. beneficiários acompanhados` / `Qtd. beneficiários a serem acompanhados`,
+         Porcentagem = round(Proporcao * 100, 1)) %>%
+  arrange(desc(Proporcao)) %>%
+  slice_tail( n = 10)
+
+indicador_global <- round(sum(bolsa_municipio$`Perc. cobertura de beneficiários acompanhados (%)`) / nrow(bolsa_municipio), 2) 
+
+# Criando o gráfico
+ggplot(dados, aes(x = reorder(Mun_uf, Proporcao), y = Proporcao, fill = Região)) +
+  geom_col() +
+  geom_text(aes(label = paste0(Porcentagem, "%")), vjust = 0.4) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Municípios com menos acompanhados",
+    x = "Município",
+    y = "Proporção de Acompanhamento"
+  ) +
+  theme_minimal() +
+  geom_hline(
+    yintercept = indicador_global,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = indicador_global,
+    label = paste("Média Municipal: ", indicador_global * 100, "%"),
+    hjust = 1, vjust = 0.5,
+    color = "black"
+  ) +
+  theme(plot.title = element_text(size = 12)) +
+  coord_flip()
+```
+
+## informações por UF
+
+```{r}
+bolsa_estado <- bolsa_estado %>%
+  select(-Município)
+
+prop_bsa_estado <- bolsa_estado %>%
+  group_by(Estado) %>%
+  summarise(sum_acomp = sum(`Qtd. beneficiários acompanhados`), sum_total_acomp = sum(`Qtd. beneficiários a serem acompanhados`), Proporcao = sum_acomp / sum_total_acomp)
+```
+
+
+
+```{r}
+dados_grafico2 <- bolsa_estado %>%
+  group_by(Estado, Região) %>%
+  summarise(
+    total_serem_acompanhados = sum(`Qtd. beneficiários a serem acompanhados`),
+    total_populacao = sum(População),
+    proporcao = total_serem_acompanhados / total_populacao
+  ) %>%
+  mutate(
+    porcentagem = round(proporcao * 100, 1)
+  ) %>%
+  arrange(proporcao)  # Ordem crescente
+
+indicador_global <- round(sum(dados_grafico2$proporcao) / nrow(dados_grafico2), 2) 
+
+ggplot(dados_grafico2, aes(x = reorder(Estado, proporcao), y = proporcao, fill = Região)) +
+  geom_col() +
+  geom_text(aes(label = paste0(porcentagem, "%")), 
+            hjust = -0.1, 
+            color = "black", 
+            size = 3.5) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                   expand = expansion(mult = c(0, 0.15))) +
+  labs(title = "Beneficiários por UF",
+       x = "UF",
+       y = "Proporção de acompanhados") +
+  geom_hline(
+    yintercept = indicador_global,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = indicador_global,
+    label = paste("Média por UF: ", indicador_global * 100, "%"),
+    hjust = -0.3, vjust = 0.5,
+    color = "black"
+  ) +
+  theme_minimal() +
+  coord_flip()
+```
+
+
+
+```{r}
+dados_grafico <- bolsa_estado %>%
+  group_by(Estado, Região) %>%
+  summarise(
+    sum_acomp = sum(`Qtd. beneficiários acompanhados`),
+    sum_total_acomp = sum(`Qtd. beneficiários a serem acompanhados`),
+    Proporcao = sum_acomp / sum_total_acomp
+  ) %>%
+  mutate(
+    Porcentagem = round(Proporcao * 100, 1),
+    Estado = factor(Estado)
+  )
+
+# recalcula global
+indicador_global <- round(sum(dados_grafico$Proporcao) / nrow(dados_grafico), 2) 
+
+# Criando o gráfico
+ggplot(dados_grafico, aes(x = reorder(Estado, Proporcao), y = Proporcao, fill = Região)) +
+  geom_col() +
+  geom_text(aes(label = paste0(Porcentagem, "%")), 
+            hjust = 1.1, 
+            color = "white", 
+            size = 3,
+            vjust = 0.4) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Acompanhados por UF",
+    x = "UF",
+    y = "Proporção de acompanhados"
+  ) +
+  geom_hline(
+    yintercept = indicador_global,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = indicador_global,
+    label = paste("Média por UF: ", indicador_global * 100, "%"),
+    hjust = 0.4, vjust = 0.5,
+    color = "black",
+    size  = 3
+  ) +
+  theme_minimal() +
+  coord_flip() 
+```
+
+
+## Por região
+
+
+
+
+```{r}
+dados_grafico2 <- bolsa_regiao %>%
+  group_by(Região) %>%
+  summarise(
+    total_serem_acompanhados = sum(`Qtd. beneficiários a serem acompanhados`),
+    total_populacao = sum(População),
+    proporcao = total_serem_acompanhados / total_populacao
+  ) %>%
+  mutate(
+    porcentagem = round(proporcao * 100, 1)
+  ) %>%
+  arrange(proporcao)  # Ordem crescente
+
+
+media_regional <- round(sum(dados_grafico2$proporcao) / 5, 2)
+
+ggplot(dados_grafico2, aes(x = reorder(Região, proporcao), y = proporcao, fill = Região)) +
+  geom_col() +
+  geom_text(aes(label = paste0(porcentagem, "%")), 
+            hjust = -0.1, 
+            color = "black", 
+            size = 3.5) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                   expand = expansion(mult = c(0, 0.15))) +
+  labs(title = "Beneficiários por Região",
+       x = "Região",
+       y = "Proporção de acompanhados") +
+  geom_hline(aes(yintercept = media_regional),
+             color    = "black",
+             linetype = "dashed",
+             size     = 1) +
+  annotate("text", x = 0, y = media_regional,
+           label = paste("Média por regiões: ", (media_regional) * 100, "%"),
+           hjust = -0.5, vjust = -0.5, color = "black") +
+  theme_minimal() +
+  coord_flip() +
+  guides(fill = "none")
+```
+
+
+
+
+
+
+```{r}
+
+dados_grafico <- bolsa_regiao %>%
+  group_by(Região) %>%
+  summarise(
+    sum_acomp = sum(`Qtd. beneficiários acompanhados`),
+    sum_total_acomp = sum(`Qtd. beneficiários a serem acompanhados`),
+    Proporcao = sum_acomp / sum_total_acomp
+  ) %>%
+  mutate(
+    Porcentagem = round(Proporcao * 100, 1),
+    Estado = factor(Região)
+  )
+
+
+media_regional <- dados_grafico %>%
+  summarise(media = sum(Proporcao) / 5)
+
+# Criando o gráfico
+ggplot(dados_grafico, aes(x = reorder(Região, Proporcao), y = Proporcao, fill = Região)) +
+  geom_col() +
+  geom_text(aes(label = paste0(Porcentagem, "%")), 
+            hjust = 1.1, 
+            color = "white", 
+            size = 3,
+            vjust = 0.4) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Acompanhados por Região",
+    x = "Região",
+    y = "Proporção de acompanhados"
+  ) +
+  theme_minimal() +
+  geom_hline(aes(yintercept = media_regional$media),
+             color    = "black",
+             linetype = "dashed",
+             size     = 1) +
+  annotate("text", x = 0, y = media_regional$media,
+           label = paste("Média por regiões: ", round((media_regional$media) *100, 2)),
+           hjust = 1.2, vjust = -0.5, color = "black") +
+  coord_flip() +
+  guides(fill = "none")
+```
+
+
+

@@ -3,8 +3,8 @@ title: "Promoção de praticas em saude"
 author: "Erick Nasareth"
 date: "2025-04-27"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r }
@@ -106,7 +106,7 @@ dados_taxas_mun <- dados_taxas_mun %>%
 ```{r}
 dados_taxas_mun %>% 
   ggplot(aes(x = Taxa_Antropometria)) +
-  geom_histogram(fill = "#76c893") +
+  geom_histogram(fill = "steelblue") +
   labs(title = "Práticas Antropométricas", x = "Práticas a cada 100.000 habitantes", y = "Quantidade de Municípios")
 ```
 
@@ -114,14 +114,14 @@ dados_taxas_mun %>%
 ```{r}
 dados_taxas_mun %>% 
   ggplot(aes(x = Taxa_Praticas)) +
-  geom_histogram(fill = "#f67e7d") +
+  geom_histogram(fill = "steelblue") +
   labs(x = "Práticas a cada 100.000 habitantes", y = "Quantidade de Municípios", title = "Práticas Corporais")
 ```
 
 ```{r}
 dados_taxas_mun %>% 
   ggplot(aes(x = Taxa_Vacinacao)) +
-  geom_histogram(fill = "#c8b6ff") +
+  geom_histogram(fill = "steelblue") +
   labs(x = "Práticas a cada 100.000 habitantes", y = "Quantidade de municípios", title = "Praticas de Vacinação")
 ```
 
@@ -131,7 +131,7 @@ dados_taxas_mun %>%
 ```{r}
 # Calculando as taxas por 100.000 habitantes
 dados_taxas <- praticas_uf %>%
-  group_by(Uf) %>%
+  group_by(Uf, Região) %>%
   summarise(
     Taxa_Antropometria = sum(Antropometria) / sum(População) * 100000,
     Taxa_Praticas = sum(`Práticas corporais / atividade`) / sum(População) * 100000,
@@ -146,8 +146,8 @@ dados_taxas <- praticas_uf %>%
 
 media_global <- round(sum(dados_taxas$Taxa_Antropometria) / nrow(dados_taxas), 2)
 
-ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Antropometria), y = Taxa_Antropometria)) +
-  geom_bar(stat = "identity", fill = "#76c893") +
+ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Antropometria), y = Taxa_Antropometria, fill = Região)) +
+  geom_bar(stat = "identity") +
   geom_text(aes(label = sprintf("%.2f", round(Taxa_Antropometria, 2))), 
             vjust = 0.4, size = 3, color = "black") +
   labs(title = "Promoção de Práticas Antropométricas por 100.000 habitantes por UF",
@@ -176,8 +176,8 @@ ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Antropometria), y = Taxa_Antropomet
 ```{r}
 media_global <- round(sum(dados_taxas$Taxa_Praticas) / nrow(dados_taxas), 2)
 
-ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Praticas), y = Taxa_Praticas)) +
-  geom_bar(stat = "identity", fill = "#f67e7d") +
+ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Praticas), y = Taxa_Praticas, fill = Região)) +
+  geom_bar(stat = "identity") +
   geom_text(aes(label = sprintf("%.2f", round(Taxa_Praticas, 2))), 
             vjust = 0.4, size = 3, color = "black") +
   labs(title = "Promoção de Práticas Corporais por 100.000 habitantes por UF",
@@ -207,8 +207,8 @@ ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Praticas), y = Taxa_Praticas)) +
 media_global <- round(sum(dados_taxas$Taxa_Vacinacao) / nrow(dados_taxas), 2)
 
 
-ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Vacinacao), y = Taxa_Vacinacao)) +
-  geom_bar(stat = "identity", fill = "#c8b6ff") +
+ggplot(dados_taxas, aes(x = reorder(Uf, Taxa_Vacinacao), y = Taxa_Vacinacao, fill = Região)) +
+  geom_bar(stat = "identity") +
   geom_text(aes(label = sprintf("%.2f", round(Taxa_Vacinacao, 2))), 
             vjust = 0.4, size = 3, color = "black") +
   labs(title = "Promoção de Atividades Vacinais por 100.000 habitantes por UF",
@@ -254,8 +254,8 @@ dados_taxas_regiao <- praticas_uf %>%
 ```{r}
 media_global <- round(sum(dados_taxas_regiao$Taxa_Antropometria) / nrow(dados_taxas_regiao), 2)
 
-ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Antropometria), y = Taxa_Antropometria)) +
-  geom_bar(stat = "identity", fill = "#76c893") +
+ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Antropometria), y = Taxa_Antropometria, fill = Região)) +
+  geom_bar(stat = "identity") +
   geom_text(aes(label = sprintf("%.2f", round(Taxa_Antropometria, 2))), 
             vjust = 0.4, size = 3, color = "black") +
   labs(title = "Praticas em Antropometria",
@@ -284,8 +284,8 @@ ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Antropometria), y = Tax
 ```{r}
 media_global <- round(sum(dados_taxas_regiao$Taxa_Praticas) / nrow(dados_taxas_regiao), 2)
 
-ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Praticas), y = Taxa_Praticas)) +
-  geom_bar(stat = "identity", fill = "#f67e7d") +
+ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Praticas), y = Taxa_Praticas, fill = Região)) +
+  geom_bar(stat = "identity") +
   geom_text(aes(label = sprintf("%.2f", round(Taxa_Praticas, 2))), 
             vjust = 0.4, size = 3, color = "black") +
   labs(title = "Práticas Corporais",
@@ -314,8 +314,8 @@ ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Praticas), y = Taxa_Pra
 ```{r}
 media_global <- round(sum(dados_taxas_regiao$Taxa_Vacinacao) / nrow(dados_taxas_regiao), 2)
 
-ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Vacinacao), y = Taxa_Vacinacao)) +
-  geom_bar(stat = "identity", fill = "#c8b6ff") +
+ggplot(dados_taxas_regiao, aes(x = reorder(Região, Taxa_Vacinacao), y = Taxa_Vacinacao, fill = Região)) +
+  geom_bar(stat = "identity") +
   geom_text(aes(label = sprintf("%.2f", round(Taxa_Vacinacao, 2))), 
             vjust = 0.4, size = 3, color = "black") +
   labs(title = "Atividades vacinais",
