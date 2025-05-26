@@ -1,0 +1,17 @@
+---
+title: "Raça/cor"
+author: "Erick Nasareth"
+date: "2025-05-25"
+output: pdf_document
+---
+
+```{r}
+if (!require(pacman)) {install.packages("pacman")}
+pacman::p_load("tidyverse", "readxl")
+```
+
+
+```{r}
+etnia_mun <- readxl::read_xlsx("Data/raca_cor_mun.xlsx")
+```
+
