@@ -7,11 +7,228 @@ output: pdf_document
 
 ```{r}
 if (!require(pacman)) {install.packages("pacman")}
-pacman::p_load("tidyverse", "readxl")
+pacman::p_load("tidyverse", "readxl", "knitr", "strigr", "forcats")
 ```
 
 
 ```{r}
-etnia_mun <- readxl::read_xlsx("Data/raca_cor_mun.xlsx")
+# municipios cor
+etnia_mun <- readxl::read_xlsx("Data/raca_cor_mun.xlsx", skip = 4)
+names(etnia_mun) <- c("Ibge", "Municipio", "Total", "Branca", "Preta","Amarela", "Parda", "Indígena")
+etnia_mun <- etnia_mun[2:(nrow(etnia_mun)-1), ]
+
+# uf cor
+etnia_uf <- readxl::read_xlsx("Data/raca_cor_uf.xlsx", skip = 4)
+names(etnia_uf) <- c("Região", "UF", "Total", "Branca", "Preta","Amarela", "Parda", "Indígena")
+etnia_uf <- etnia_uf[1:(nrow(etnia_uf)-1), ]
+
+# praticas municipio
+praticas_mun <- read_xlsx("Data/praticas2023.xlsx")
 ```
+
+```{r}
+#uf
+
+etnia_uf <- etnia_uf %>%
+  mutate(Região = str_sub(Região, 1, 1))
+
+etnia_uf$Região <- factor(etnia_uf$Região, levels = c("5", "2", "1", "3", "4"), labels = c("Centro-Oeste", "Nordeste", "Norte", "Sudeste", "Sul"))
+
+```
+
+```{r}
+praticas_mun$Antropometria <- gsub("\\.", "", praticas_mun$Antropometria)
+praticas_mun$`Práticas corporais / atividade` <- gsub("\\.", "", praticas_mun$`Práticas corporais / atividade`)
+praticas_mun$`Verificação da situação vacina` <- gsub("\\.", "", praticas_mun$`Verificação da situação vacina`)
+```
+
+```{r}
+praticas_mun$Antropometria <- as.numeric(praticas_mun$Antropometria)
+praticas_mun$`Práticas corporais / atividade` <- as.numeric(praticas_mun$`Práticas corporais / atividade`)
+praticas_mun$`Verificação da situação vacina` <- as.numeric(praticas_mun$`Verificação da situação vacina`)
+```
+
+
+
+```{r}
+#mun
+
+etnia_mun <- etnia_mun %>%
+  mutate(Ibge = str_sub(Ibge, 1, 6))
+
+praticas_mun <- praticas_mun[, c("Ibge", "Antropometria", "Práticas corporais / atividade", "Verificação da situação vacina")]
+
+etnia_praticas <- merge(praticas_mun, etnia_mun, by="Ibge")
+```
+
+
+# Distribuição da população por raça/cor em relação aos municípios
+
+```{r}
+etnia_mun %>%
+  ggplot() +
+  geom_histogram(aes(x = Branca), fill = "#66C2A5", alpha = 0.7) +
+  geom_histogram(aes(x = Preta), fill = "#FC8D62", alpha = 0.7) +
+  geom_histogram(aes(x = Parda), fill ="#8DA0CB", alpha = 0.7) +
+  labs(title = "Distribuição das populações Brancas, Pardas e Pretas por municípios", y = "Quantitade de municípios", x = "Propoção da população")
+```
+
+
+```{r}
+kable(head(arrange(etnia_mun, desc(Branca))[, c("Municipio", "Branca", "Parda", "Preta", "Indígena")]), caption = "Municípios com maior proporção de população Branca")
+kable(head(arrange(etnia_mun, desc(Parda))[, c("Municipio", "Branca", "Parda", "Preta", "Indígena")]), caption = "Municípios com maior proporção de população Parda")
+kable(head(arrange(etnia_mun, desc(Preta))[, c("Municipio", "Branca", "Parda", "Preta", "Indígena")]), caption = "Municípios com maior proporção de população Preta")
+kable(head(arrange(etnia_mun, desc(Indígena))[, c("Municipio", "Branca", "Parda", "Preta", "Indígena")]), caption = "Municípios com maior proporção de população Indígena")
+
+```
+
+
+
+# Distribuição da população por raça/cor em relação aos municípios
+
+## Branca
+
+```{r}
+media_uf <- etnia_uf[1, ]
+```
+
+
+
+```{r}
+
+etnia_uf[2:nrow(etnia_uf), ] %>%
+  ggplot(aes(x = reorder(UF, Branca), y = Branca, fill = Região)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Proporção de população Branca por UF", y = "População Branca", x = "UF") +
+  geom_hline(
+    yintercept = media_uf$Branca,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = media_uf$Branca,
+    label = paste("Média por UF: ", media_uf$Branca),
+    hjust = -0.1, vjust = 0.5,
+    color = "black"
+  ) +
+  coord_flip() +
+  theme_minimal() 
+
+```
+
+## Preta
+
+```{r}
+
+
+etnia_uf[2:nrow(etnia_uf), ] %>%
+  ggplot(aes(x = reorder(UF, Preta), y = Preta, fill = Região)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Proporção de população Preta por UF", y = "População Preta", x = "UF") +
+  geom_hline(
+    yintercept = media_uf$Preta,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = media_uf$Preta,
+    label = paste("Média por UF: ", media_uf$Preta),
+    hjust = -0.1, vjust = 0.5,
+    color = "black"
+  ) +
+  coord_flip() +
+  theme_minimal() 
+
+```
+
+## Parda
+
+```{r}
+
+etnia_uf[2:nrow(etnia_uf), ] %>%
+  ggplot(aes(x = reorder(UF, Parda), y = Parda, fill = Região)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Proporção de população Parda por UF", y = "População Parda", x = "UF") +
+  geom_hline(
+    yintercept = media_uf$Parda,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = media_uf$Parda,
+    label = paste("Média por UF: ", media_uf$Parda),
+    hjust = -0.1, vjust = 0.5,
+    color = "black"
+  ) +
+  coord_flip() +
+  theme_minimal() 
+
+```
+
+## Indígena
+
+```{r}
+
+
+etnia_uf[2:nrow(etnia_uf), ] %>%
+  ggplot(aes(x = reorder(UF, Indígena), y = Indígena, fill = Região)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Proporção de população Indígena por UF", y = "População Indígena", x = "UF") +
+  geom_hline(
+    yintercept = media_uf$Indígena,
+    color      = "black",
+    linetype   = "dashed",
+    size       = 1
+  ) +
+  annotate(
+    "text",
+    x     = 1,
+    y     = media_uf$Indígena,
+    label = paste("Média por UF: ", media_uf$Indígena),
+    hjust = -0.1, vjust = 0.5,
+    color = "black"
+  ) +
+  coord_flip() +
+  theme_minimal() 
+
+```
+
+
+# Praticas x Etnia
+
+## Antropometria
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
