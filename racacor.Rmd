@@ -7,7 +7,7 @@ output: pdf_document
 
 ```{r}
 if (!require(pacman)) {install.packages("pacman")}
-pacman::p_load("tidyverse", "readxl", "knitr", "strigr", "forcats")
+pacman::p_load("tidyverse", "readxl", "knitr", "strigr", "forcats", "GGally")
 ```
 
 
@@ -24,9 +24,20 @@ etnia_uf <- etnia_uf[1:(nrow(etnia_uf)-1), ]
 
 # praticas municipio
 praticas_mun <- read_xlsx("Data/praticas2023.xlsx")
+
+# bolsa por municipio
+bolsa <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
+
+# porte por municipio
+porte <- read_xls("Data/porte_mun.xls", skip = 1)
+
+# população
+pop <- read_xls("Data/pop_cadastrada_2023.xls")
 ```
 
 ```{r}
+#criando as regioes
+
 #uf
 
 etnia_uf <- etnia_uf %>%
@@ -37,12 +48,12 @@ etnia_uf$Região <- factor(etnia_uf$Região, levels = c("5", "2", "1", "3", "4")
 ```
 
 ```{r}
+#praticas
+
 praticas_mun$Antropometria <- gsub("\\.", "", praticas_mun$Antropometria)
 praticas_mun$`Práticas corporais / atividade` <- gsub("\\.", "", praticas_mun$`Práticas corporais / atividade`)
 praticas_mun$`Verificação da situação vacina` <- gsub("\\.", "", praticas_mun$`Verificação da situação vacina`)
-```
 
-```{r}
 praticas_mun$Antropometria <- as.numeric(praticas_mun$Antropometria)
 praticas_mun$`Práticas corporais / atividade` <- as.numeric(praticas_mun$`Práticas corporais / atividade`)
 praticas_mun$`Verificação da situação vacina` <- as.numeric(praticas_mun$`Verificação da situação vacina`)
@@ -50,9 +61,8 @@ praticas_mun$`Verificação da situação vacina` <- as.numeric(praticas_mun$`Ve
 
 
 
-```{r}
 #mun
-
+```{r}
 etnia_mun <- etnia_mun %>%
   mutate(Ibge = str_sub(Ibge, 1, 6))
 
@@ -61,6 +71,16 @@ praticas_mun <- praticas_mun[, c("Ibge", "Antropometria", "Práticas corporais /
 etnia_praticas <- merge(praticas_mun, etnia_mun, by="Ibge")
 ```
 
+
+#bolsa
+```{r}
+bolsa <- bolsa[, c("IBGE", "Qtd. beneficiários a serem acompanhados", "Qtd. beneficiários acompanhados", "Perc. cobertura de beneficiários acompanhados (%)")]
+
+names(bolsa)[1] <- "Ibge"
+bolsa$Ibge <- as.character(bolsa$Ibge)
+
+bolsa_cor <- merge(bolsa, etnia_mun, "Ibge")
+```
 
 # Distribuição da população por raça/cor em relação aos municípios
 
@@ -208,21 +228,159 @@ etnia_uf[2:nrow(etnia_uf), ] %>%
 ## Antropometria
 
 ```{r}
-
+bolsa_cor %>%
+  ggplot() +
+  geom_point(aes(y = `Perc. cobertura de beneficiários acompanhados (%)`, x = Branca), alpha = 0.1, color = "#66C2A5") +
+  geom_point(aes(y = `Perc. cobertura de beneficiários acompanhados (%)`, x = Preta), alpha = 0.1, color = "#8DA0CB") +
+  geom_point(aes(y = `Perc. cobertura de beneficiários acompanhados (%)`, x = Parda), alpha = 0.1, color = "#FC8D62") 
 ```
 
 
 
 
+# Porte
+
+```{r}
+porte <- porte %>%
+  mutate(Ibge = stringr::str_c(`COD. UF`, `COD. MUNIC`))
+
+porte <- porte %>%
+  mutate(Ibge = str_sub(Ibge, 1, 6))
+
+porte <- porte[, c("Ibge", "UF", "NOME DO MUNICÍPIO", "POPULAÇÃO")]
+```
+
+
+```{r}
+porte <- porte %>%
+  mutate(
+    porte_ibge = case_when(
+      POPULAÇÃO <= 5000 ~ "Pequeno I (até 5.000 hab.)",
+      POPULAÇÃO > 5000 & POPULAÇÃO <= 10000 ~ "Pequeno II (5.001–10.000 hab.)",
+      POPULAÇÃO > 10000 & POPULAÇÃO <= 20000 ~ "Médio I (10.001–20.000 hab.)",
+      POPULAÇÃO > 20000 & POPULAÇÃO <= 50000 ~ "Médio II (20.001–50.000 hab.)",
+      POPULAÇÃO > 50000 & POPULAÇÃO <= 100000 ~ "Grande I (50.001–100.000 hab.)",
+      POPULAÇÃO > 100000 ~ "Grande II (> 100.000 hab.)",
+      TRUE ~ NA_character_
+    )
+  )
+```
+
+
+```{r}
+porte$porte_ibge <- factor(porte$porte_ibge, levels = c("Pequeno I (até 5.000 hab.)", "Pequeno II (5.001–10.000 hab.)", "Médio I (10.001–20.000 hab.)", "Médio II (20.001–50.000 hab.)", "Grande I (50.001–100.000 hab.)", "Grande II (> 100.000 hab.)"))
+```
+
+```{r}
+names(pop)[4] <- "Ibge"
+```
+
+
+```{r}
+porte_bolsa <- merge(porte, bolsa, "Ibge")
+porte_bolsa <- merge(porte, pop, "Ibge")
+```
+
+```{r}
+cores_porte <- c("#A8D8EA", 
+                 "#AA96DA", 
+                 "#FCBAD3", 
+                 "#DAEFDC", 
+                 "#F8B195", 
+                 "#F67280")
+```
+
+
+## Porte x Bolsa acompanhados
+
+```{r}
+porte_bolsa %>%
+  ggplot(aes(x= porte_ibge, y = `Perc. cobertura de beneficiários acompanhados (%)`, fill = porte_ibge)) +
+  geom_boxplot() +
+  scale_fill_manual(
+    values = cores_porte
+  ) +
+  coord_flip() +
+  labs(title = "distribuíção de acompanhados pelo bolsa família por porte do município", y = "Percentual de acompanhados pelo Bolsa Família", x = "Porte") +
+  guides(fill = "none")
+```
+
+
+```{r}
+porte_bolsa <- porte_bolsa %>%
+  mutate(Desacompanhados = 1 - `Perc. cobertura de beneficiários acompanhados (%)`)
+```
+
+
+```{r}
+porte_bolsa %>%
+  ggplot(aes(x= porte_ibge, y = Desacompanhados, fill = porte_ibge)) +
+  geom_boxplot() +
+  scale_fill_manual(
+    values = cores_porte
+  ) +
+  coord_flip() +
+  labs(title = "Desacompanhados bolsa família por porte do município", y = "Percentual de desacompanhados pelo Bolsa Família", x = "Porte") +
+  guides(fill = "none")
+```
+
+## Cobertura APS por porte
+
+```{r}
+porte_bolsa %>%
+  ggplot(aes(x= porte_ibge, y = `Cobertura APS`, fill = porte_ibge)) +
+  geom_boxplot() +
+  scale_fill_manual(
+    values = cores_porte
+  ) +
+  coord_flip() +
+  labs(title = "Cobertura APS por porte do município", y = "Percentual de cobertura", x = "Porte") +
+  guides(fill = "none")
+```
+
+```{r}
+porte_bolsa %>%
+  group_by(porte_ibge) %>%
+  summarise("Média de cobertura" = mean(`Cobertura APS`)) %>%
+  kable(caption = "Cobertura APS média por porte municipal")
+```
 
 
 
 
+# Porte x Práticas
 
 
+```{r}
+porte_praticas <- merge(porte_bolsa, praticas_mun, "Ibge")
+```
 
 
+```{r}
+# Calculando as taxas por 1.000.000 habitantes
+porte_praticas[, c("Taxa_Antropometria", "Taxa_Praticas", "Taxa_Vacinacao")] <- porte_praticas %>%
+  summarise(
+    Taxa_Antropometria = (Antropometria / População) * 100000,
+    Taxa_Praticas = `Práticas corporais / atividade` / População * 100000,
+    Taxa_Vacinacao = `Verificação da situação vacina` / População * 100000
+  ) %>%
+  ungroup()
 
+
+```
+
+
+```{r}
+porte_praticas %>%
+  ggplot(aes(x= porte_ibge, y = Antropometria, fill = porte_ibge)) +
+  geom_boxplot() +
+  scale_fill_manual(
+    values = cores_porte
+  ) +
+  coord_flip() +
+  labs(title = "Cobertura APS por porte do município", y = "Percentual de cobertura", x = "Porte") +
+  guides(fill = "none")
+```
 
 
 
