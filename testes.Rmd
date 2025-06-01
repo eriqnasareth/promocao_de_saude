@@ -1,0 +1,16 @@
+---
+title: "testes"
+author: "Erick Nasareth"
+date: "2025-05-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+praticas <- readxl::read_excel("Data/praticas2023.xlsx")
+populacao <- readxl::read_excel("Data/pop_cadastrada_2023.xls")
+```
+

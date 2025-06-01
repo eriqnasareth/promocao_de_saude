@@ -278,7 +278,7 @@ names(pop)[4] <- "Ibge"
 
 ```{r}
 porte_bolsa <- merge(porte, bolsa, "Ibge")
-porte_bolsa <- merge(porte, pop, "Ibge")
+porte_bolsa <- merge(porte_bolsa, pop, "Ibge")
 ```
 
 ```{r}
@@ -358,13 +358,12 @@ porte_praticas <- merge(porte_bolsa, praticas_mun, "Ibge")
 
 ```{r}
 # Calculando as taxas por 1.000.000 habitantes
-porte_praticas[, c("Taxa_Antropometria", "Taxa_Praticas", "Taxa_Vacinacao")] <- porte_praticas %>%
-  summarise(
+porte_praticas <- porte_praticas %>%
+  mutate(
     Taxa_Antropometria = (Antropometria / População) * 100000,
     Taxa_Praticas = `Práticas corporais / atividade` / População * 100000,
     Taxa_Vacinacao = `Verificação da situação vacina` / População * 100000
-  ) %>%
-  ungroup()
+  ) 
 
 
 ```
@@ -372,7 +371,7 @@ porte_praticas[, c("Taxa_Antropometria", "Taxa_Praticas", "Taxa_Vacinacao")] <- 
 
 ```{r}
 porte_praticas %>%
-  ggplot(aes(x= porte_ibge, y = Antropometria, fill = porte_ibge)) +
+  ggplot(aes(x= porte_ibge, y = Taxa_Antropometria, fill = porte_ibge)) +
   geom_boxplot() +
   scale_fill_manual(
     values = cores_porte
@@ -382,6 +381,12 @@ porte_praticas %>%
   guides(fill = "none")
 ```
 
+```{r}
+porte_praticas %>%
+  group_by(porte_ibge) %>%
+  summarise("Média Vacinação" = mean(Taxa_Vacinacao), "Média Antropometria" = mean(Taxa_Antropometria), "Média Praticas Corporais" = mean(Taxa_Praticas)) %>%
+  kable(caption = "Promoção de práticas de saúde a cada 1.000.000 habitantes")
+```
 
 
 
