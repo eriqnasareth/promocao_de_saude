@@ -5,9 +5,14 @@ date: "2025-05-25"
 output: pdf_document
 ---
 
-```{r}
+```{r echo = F, warning = F, message = F}
 if (!require(pacman)) {install.packages("pacman")}
 pacman::p_load("tidyverse", "readxl", "knitr", "strigr", "forcats", "GGally")
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r}
+theme_set(theme_minimal())
 ```
 
 
@@ -28,14 +33,17 @@ praticas_mun <- read_xlsx("Data/praticas2023.xlsx")
 # bolsa por municipio
 bolsa <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
 
-# porte por municipio
-porte <- read_xls("Data/porte_mun.xls", skip = 1)
-
 # população
 pop <- read_xls("Data/pop_cadastrada_2023.xls")
 pop <- pop %>%
   filter(`Qt. Total de cadastros 
 (limitado pela população IBGE)` != 0)
+
+#equipes
+equipes <- read.csv2("Data/Equipes.csv", skip = 4, col.names = c("Município", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"))
+equipes <- equipes %>%
+  mutate(Ibge = str_split(Município, pattern = " ", simplify = T)[,1])
+equipes <- equipes[, 2:(ncol(equipes))]
 ```
 
 ```{r}
@@ -87,14 +95,30 @@ bolsa_cor <- merge(bolsa, etnia_mun, "Ibge")
 
 # Distribuição da população por raça/cor em relação aos municípios
 
+## Branca
 ```{r}
 etnia_mun %>%
   ggplot() +
   geom_histogram(aes(x = Branca), fill = "#66C2A5", alpha = 0.7) +
-  geom_histogram(aes(x = Preta), fill = "#FC8D62", alpha = 0.7) +
-  geom_histogram(aes(x = Parda), fill ="#8DA0CB", alpha = 0.7) +
-  labs(title = "Distribuição das populações Brancas, Pardas e Pretas por municípios", y = "Quantitade de municípios", x = "Propoção da população")
+  labs(title = "Distribuição da população Branca por municípios", y = "Quantitade de municípios", x = "Propoção da população")
 ```
+
+## Preta
+```{r}
+etnia_mun %>%
+  ggplot() +
+  geom_histogram(aes(x = Preta), fill = "#FC8D62", alpha = 0.7) +
+  labs(title = "Distribuição da população Preta por municípios", y = "Quantitade de municípios", x = "Propoção da população")
+```
+
+## Parda
+```{r}
+etnia_mun %>%
+  ggplot() +
+  geom_histogram(aes(x = Parda), fill ="#8DA0CB", alpha = 0.7) +
+  labs(title = "Distribuição das população Parda por municípios", y = "Quantitade de municípios", x = "Propoção da população")
+```
+
 
 
 ```{r}
@@ -226,44 +250,21 @@ etnia_uf[2:nrow(etnia_uf), ] %>%
 ```
 
 
-# Praticas x Etnia
-
-## Antropometria
-
-```{r}
-bolsa_cor %>%
-  ggplot() +
-  geom_point(aes(y = `Perc. cobertura de beneficiários acompanhados (%)`, x = Branca), alpha = 0.1, color = "#66C2A5") +
-  geom_point(aes(y = `Perc. cobertura de beneficiários acompanhados (%)`, x = Preta), alpha = 0.1, color = "#8DA0CB") +
-  geom_point(aes(y = `Perc. cobertura de beneficiários acompanhados (%)`, x = Parda), alpha = 0.1, color = "#FC8D62") 
-```
-
-
-
-
 # Porte
 
+
 ```{r}
-porte <- porte %>%
-  mutate(Ibge = stringr::str_c(`COD. UF`, `COD. MUNIC`))
-
-porte <- porte %>%
-  mutate(Ibge = str_sub(Ibge, 1, 6))
-
-porte <- porte[, c("Ibge", "UF", "NOME DO MUNICÍPIO", "POPULAÇÃO")]
+names(pop)[4] <- "Ibge"
 ```
 
-
 ```{r}
-porte <- porte %>%
+porte <- pop %>%
   mutate(
     porte_ibge = case_when(
-      POPULAÇÃO <= 5000 ~ "Pequeno I (até 5.000 hab.)",
-      POPULAÇÃO > 5000 & POPULAÇÃO <= 10000 ~ "Pequeno II (5.001–10.000 hab.)",
-      POPULAÇÃO > 10000 & POPULAÇÃO <= 20000 ~ "Médio I (10.001–20.000 hab.)",
-      POPULAÇÃO > 20000 & POPULAÇÃO <= 50000 ~ "Médio II (20.001–50.000 hab.)",
-      POPULAÇÃO > 50000 & POPULAÇÃO <= 100000 ~ "Grande I (50.001–100.000 hab.)",
-      POPULAÇÃO > 100000 ~ "Grande II (> 100.000 hab.)",
+      População <= 20000 ~ "Pequeno I (até 20.000 hab.)",
+      População > 20000 & População <= 50000 ~ "Pequeno II (20.001–50.000 hab.)",
+      População > 50000 & População <= 100000 ~ "Médio (50.001–100.000 hab.)",
+      População > 100000 ~ "Grande (> 100.000 hab.)",
       TRUE ~ NA_character_
     )
   )
@@ -271,18 +272,9 @@ porte <- porte %>%
 
 
 ```{r}
-porte$porte_ibge <- factor(porte$porte_ibge, levels = c("Pequeno I (até 5.000 hab.)", "Pequeno II (5.001–10.000 hab.)", "Médio I (10.001–20.000 hab.)", "Médio II (20.001–50.000 hab.)", "Grande I (50.001–100.000 hab.)", "Grande II (> 100.000 hab.)"))
+porte$porte_ibge <- factor(porte$porte_ibge, levels = c("Pequeno I (até 20.000 hab.)", "Pequeno II (20.001–50.000 hab.)", "Médio (50.001–100.000 hab.)", "Grande (> 100.000 hab.)"))
 ```
 
-```{r}
-names(pop)[4] <- "Ibge"
-```
-
-
-```{r}
-porte_bolsa <- merge(porte, bolsa, "Ibge")
-porte_bolsa <- merge(porte_bolsa, pop, "Ibge")
-```
 
 ```{r}
 cores_porte <- c("#A8D8EA", 
@@ -294,7 +286,11 @@ cores_porte <- c("#A8D8EA",
 ```
 
 
-## Porte x Bolsa acompanhados
+# Porte x Bolsa acompanhados
+
+```{r}
+porte_bolsa <- merge(porte, bolsa, "Ibge")
+```
 
 ```{r}
 porte_bolsa %>%
@@ -371,6 +367,7 @@ porte_praticas <- porte_praticas %>%
 
 ```
 
+## Antropometria
 
 ```{r}
 porte_praticas %>%
@@ -380,21 +377,146 @@ porte_praticas %>%
     values = cores_porte
   ) +
   coord_flip() +
-  labs(title = "Cobertura APS por porte do município", y = "Percentual de cobertura", x = "Porte") +
+  labs(title = "Promoção de Práticas Atropométricas por porte do município", y = "Taxa", x = "Porte") +
   guides(fill = "none")
 ```
+
+## Praticas Vacinais
+
+```{r}
+porte_praticas %>%
+  ggplot(aes(x= porte_ibge, y = Taxa_Vacinacao, fill = porte_ibge)) +
+  geom_boxplot() +
+  scale_fill_manual(
+    values = cores_porte
+  ) +
+  coord_flip() +
+  labs(title = "Taxa de promoção de Práticas Vacinais por porte do município", y = "Taxa", x = "Porte") +
+  guides(fill = "none")
+```
+
+## Praticas Corporais
+
+```{r}
+porte_praticas %>%
+  ggplot(aes(x= porte_ibge, y = Taxa_Praticas, fill = porte_ibge)) +
+  geom_boxplot() +
+  scale_fill_manual(
+    values = cores_porte
+  ) +
+  coord_flip() +
+  labs(title = "Promoção de Práticas Corporais por porte do município", y = "Taxa", x = "Porte") +
+  guides(fill = "none")
+```
+
+## Tabela geral
 
 ```{r}
 porte_praticas %>%
   group_by(porte_ibge) %>%
-  summarise("Média Vacinação" = mean(Taxa_Vacinacao), "Média Antropometria" = mean(Taxa_Antropometria), "Média Praticas Corporais" = mean(Taxa_Praticas)) %>%
+  summarise("Taxa Média Vacinação" = mean(Taxa_Vacinacao), "Taxa Média Antropometria" = mean(Taxa_Antropometria), "Taxa Média Praticas Corporais" = mean(Taxa_Praticas)) %>%
   kable(caption = "Promoção de práticas de saúde a cada 1.000.000 habitantes")
 ```
 
 
+# Porte x Equipes
+
+```{r}
+equipes <- equipes[, c(13, 1:12)]
+equipes[,2:13] <- lapply(equipes[,2:13], as.numeric)
+equipes <- equipes %>%
+  mutate(soma = round((Jan + Fev + Mar + Abr + Mai + Jun + Jul + Ago + Set + Out + Nov + Dez)/12))
+equipes <- equipes %>%
+  filter(Ibge != "")
+```
 
 
+```{r}
+porte_equipes <- merge(porte, equipes, "Ibge")
+porte_equipes <- porte_equipes %>%
+  mutate(taxa = (soma/`Qt. Total de cadastros 
+(limitado pela população IBGE)`)*100000)
+```
+
+```{r}
+porte_equipes %>%
+  ggplot(aes(x= porte_ibge, y = taxa, fill = porte_ibge)) +
+  geom_boxplot() +
+  scale_fill_manual(
+    values = cores_porte
+  ) +
+  coord_flip() +
+  labs(title = "Quantidade de equipes por Porte", y = "Taxa", x = "Porte") +
+  guides(fill = "none")
+```
 
 
+```{r}
+kable(porte_equipes %>%
+        arrange(desc(taxa)) %>%
+        head() %>%
+        select(Região, UF, Município, porte_ibge, taxa), caption = "Municípios com maior número de equipes por 100.000 habitantes")
+```
 
+
+# Porte x Raça/cor
+
+```{r}
+porte_cor <- merge(porte, etnia_mun, "Ibge")
+```
+
+## Branca
+```{r}
+porte_cor %>%
+  ggplot() +
+  geom_boxplot(aes(x= porte_ibge, y = Branca, fill = porte_ibge)) +
+  scale_fill_manual(
+    values = cores_porte
+  ) +
+  coord_flip() +
+  labs(title = "Quantidade de Brancos por Porte", y = "Proporção", x = "Porte") +
+  guides(fill = "none")
+```
+
+## Parda
+```{r}
+porte_cor %>%
+  ggplot() +
+  geom_boxplot(aes(x= porte_ibge, y = Parda, fill = porte_ibge)) +
+  scale_fill_manual(
+    values = cores_porte
+  ) +
+  coord_flip() +
+  labs(title = "Quantidade de Pardos por Porte", y = "Proporção", x = "Porte") +
+  guides(fill = "none")
+```
+
+## Preta
+```{r}
+porte_cor %>%
+  ggplot() +
+  geom_boxplot(aes(x= porte_ibge, y = Preta, fill = porte_ibge)) +
+  scale_fill_manual(
+    values = cores_porte
+  ) +
+  coord_flip() +
+  labs(title = "Quantidade de Pretos por Porte", y = "Proporção", x = "Porte") +
+  guides(fill = "none")
+```
+
+# Equipes x Cobertura APS
+
+```{r}
+equipes_aps <- merge(equipes, pop, "Ibge")
+equipes_aps <- equipes_aps %>%
+  mutate(taxa = (soma/`Qt. Total de cadastros 
+(limitado pela população IBGE)`)*100000)
+```
+
+```{r}
+equipes_aps %>%
+  ggplot() +
+  geom_point(aes(y = taxa, x = `Cobertura APS`), colour = "darkred", alpha = 0.3) +
+  labs(title = "Cobertura APS por Equipes a cada 100.000 habitantes", y = "Equipes")
+```
 
