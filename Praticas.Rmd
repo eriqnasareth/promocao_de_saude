@@ -24,7 +24,6 @@ praticas <- read_xlsx("Data/praticas2023.xlsx")
 
 ```
 
-
 ```{r}
 
 populacao <- rename(populacao, Ibge = IBGE)

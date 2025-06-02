@@ -33,6 +33,9 @@ porte <- read_xls("Data/porte_mun.xls", skip = 1)
 
 # população
 pop <- read_xls("Data/pop_cadastrada_2023.xls")
+pop <- pop %>%
+  filter(`Qt. Total de cadastros 
+(limitado pela população IBGE)` != 0)
 ```
 
 ```{r}
