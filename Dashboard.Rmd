@@ -5,3 +5,104 @@ date: "2025-06-07"
 output: pdf_document
 ---
 
+```{r }
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("tidyverse", "readxl", "writexl")
+```
+
+
+```{r}
+
+bolsa <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
+populacao <- read_xls("Data/pop_cadastrada_2023.xls")
+praticas <- read_xlsx("Data/praticas2023.xlsx", n_max = 5239)
+
+```
+
+# Práticas
+
+```{r}
+
+populacao <- rename(populacao, Ibge = IBGE)
+praticas$Ibge <- as.double(praticas$Ibge)
+
+```
+
+
+```{r}
+
+praticas$Antropometria <- gsub("\\.", "", praticas$Antropometria)
+praticas$`Práticas corporais / atividade` <- gsub("\\.", "", praticas$`Práticas corporais / atividade`)
+praticas$`Verificação da situação vacina` <- gsub("\\.", "", praticas$`Verificação da situação vacina`)
+
+```
+
+
+```{r}
+praticas$Antropometria <- as.numeric(praticas$Antropometria)
+praticas$`Práticas corporais / atividade` <- as.numeric(praticas$`Práticas corporais / atividade`)
+praticas$`Verificação da situação vacina` <- as.numeric(praticas$`Verificação da situação vacina`)
+```
+
+
+```{r}
+names(populacao)[7] <- "populacao_cadastrada"
+```
+
+
+```{r}
+populacao <- populacao %>%
+  select(Ibge, populacao_cadastrada, Região)
+
+names(populacao)[2] <- "População"
+
+populacao <- populacao %>%
+  filter(População > 0)
+```
+
+
+```{r}
+praticas <- praticas %>%
+  select(Ibge, Municipio, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`)
+
+```
+
+
+```{r}
+praticas <- merge(praticas, populacao, by="Ibge")
+```
+
+
+```{r}
+praticas_mun <- praticas %>%
+  summarise(
+    Ibge = Ibge,
+    Taxa_Antropometria = (Antropometria / População) * 100000,
+    Taxa_Praticas = `Práticas corporais / atividade` / População * 100000,
+    Taxa_Vacinacao = `Verificação da situação vacina` / População * 100000
+  ) %>%
+  ungroup()
+```
+
+
+# Bolsa Família
+
+```{r}
+bolsa <- rename(bolsa, Ibge = IBGE)
+```
+
+
+```{r}
+bolsa <- bolsa %>%
+  select(Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, `Perc. cobertura de beneficiários acompanhados (%)`)
+```
+
+
+# Criação dos bancos
+
+```{r}
+write_xlsx(bolsa, "Data/Dashboard_bolsa.xlsx")
+write_xlsx(praticas_mun, "Data/Dashboard_praticas.xlsx")
+```
+
+
