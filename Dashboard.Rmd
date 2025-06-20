@@ -31,17 +31,8 @@ praticas$Ibge <- as.double(praticas$Ibge)
 
 ```{r}
 
-praticas$Antropometria <- gsub("\\.", "", praticas$Antropometria)
-praticas$`Práticas corporais / atividade` <- gsub("\\.", "", praticas$`Práticas corporais / atividade`)
-praticas$`Verificação da situação vacina` <- gsub("\\.", "", praticas$`Verificação da situação vacina`)
-
-```
-
-
-```{r}
-praticas$Antropometria <- as.numeric(praticas$Antropometria)
-praticas$`Práticas corporais / atividade` <- as.numeric(praticas$`Práticas corporais / atividade`)
-praticas$`Verificação da situação vacina` <- as.numeric(praticas$`Verificação da situação vacina`)
+praticas[, 4:13] <- sapply(praticas[, 4:13], function(x) gsub("\\.", "", x))
+praticas[, 4:13] <- sapply(praticas[, 4:13], as.numeric)
 ```
 
 
@@ -52,7 +43,7 @@ names(populacao)[7] <- "populacao_cadastrada"
 
 ```{r}
 populacao <- populacao %>%
-  select(Ibge, populacao_cadastrada, Região)
+  select(Ibge, UF, Município, Região, populacao_cadastrada)
 
 names(populacao)[2] <- "População"
 
@@ -63,25 +54,20 @@ populacao <- populacao %>%
 
 ```{r}
 praticas <- praticas %>%
-  select(Ibge, Municipio, Antropometria, `Práticas corporais / atividade`, `Verificação da situação vacina`)
+  select(-Uf, -Municipio)
 
+```
+
+```{r}
+praticas$Praticas <- rowSums(praticas[,-1])
+
+praticas <- praticas %>%
+  select(Ibge, Praticas)
 ```
 
 
 ```{r}
 praticas <- merge(praticas, populacao, by="Ibge")
-```
-
-
-```{r}
-praticas_mun <- praticas %>%
-  summarise(
-    Ibge = Ibge,
-    Taxa_Antropometria = (Antropometria / População) * 100000,
-    Taxa_Praticas = `Práticas corporais / atividade` / População * 100000,
-    Taxa_Vacinacao = `Verificação da situação vacina` / População * 100000
-  ) %>%
-  ungroup()
 ```
 
 
@@ -102,7 +88,7 @@ bolsa <- bolsa %>%
 
 ```{r}
 write_xlsx(bolsa, "Data/Dashboard_bolsa.xlsx")
-write_xlsx(praticas_mun, "Data/Dashboard_praticas.xlsx")
+write_xlsx(praticas, "Data/Dashboard_praticas.xlsx")
 ```
 
 
