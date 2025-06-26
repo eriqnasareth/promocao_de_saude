@@ -37,18 +37,15 @@ praticas[, 4:13] <- sapply(praticas[, 4:13], as.numeric)
 
 
 ```{r}
-names(populacao)[7] <- "populacao_cadastrada"
+names(populacao)[7] <- "Populacao_Cadastrada"
 ```
 
 
 ```{r}
 populacao <- populacao %>%
-  select(Ibge, UF, Município, Região, populacao_cadastrada)
+  select(Ibge, UF, Município, Região, População, Populacao_Cadastrada)
 
-names(populacao)[2] <- "População"
 
-populacao <- populacao %>%
-  filter(População > 0)
 ```
 
 
@@ -61,14 +58,8 @@ praticas <- praticas %>%
 ```{r}
 praticas$Praticas <- rowSums(praticas[,-1])
 
-praticas <- praticas %>%
-  select(Ibge, Praticas)
 ```
 
-
-```{r}
-praticas <- merge(praticas, populacao, by="Ibge")
-```
 
 
 # Bolsa Família
@@ -83,12 +74,29 @@ bolsa <- bolsa %>%
   select(Ibge, `Qtd. beneficiários a serem acompanhados`, `Qtd. beneficiários acompanhados`, `Perc. cobertura de beneficiários acompanhados (%)`)
 ```
 
+```{r}
+bolsa <- merge(populacao, bolsa, by="Ibge", all = TRUE)
+bolsa_praticas <- merge(bolsa, praticas, by="Ibge", all = TRUE)
+```
+
+
+```{r}
+bolsa_praticas <- bolsa_praticas %>%
+  mutate(
+    porte_ibge = case_when(
+      População <= 20000 ~ "Pequeno I (até 20.000 hab.)",
+      População > 20000 & População <= 50000 ~ "Pequeno II (20.001–50.000 hab.)",
+      População > 50000 & População <= 100000 ~ "Médio (50.001–100.000 hab.)",
+      População > 100000 ~ "Grande (> 100.000 hab.)",
+      TRUE ~ NA_character_
+    )
+  )
+```
 
 # Criação dos bancos
 
 ```{r}
-write_xlsx(bolsa, "Data/Dashboard_bolsa.xlsx")
-write_xlsx(praticas, "Data/Dashboard_praticas.xlsx")
+write_xlsx(bolsa_praticas, "Data/Dashboard_bolsa_praticas.xlsx")
 ```
 
 
