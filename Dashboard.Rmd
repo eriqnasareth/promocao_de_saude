@@ -7,7 +7,7 @@ output: pdf_document
 
 ```{r }
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("tidyverse", "readxl", "writexl")
+pacman::p_load("tidyverse", "readxl", "writexl", "stringr")
 ```
 
 
@@ -16,7 +16,16 @@ pacman::p_load("tidyverse", "readxl", "writexl")
 bolsa <- read_xlsx("Data/bolsa_familia_consolidado_geral_2023.xlsx")
 populacao <- read_xls("Data/pop_cadastrada_2023.xls")
 praticas <- read_xlsx("Data/praticas2023.xlsx", n_max = 5239)
+equipes <- read.csv("Data/cnes_cnv_equipebr222410189_6_63_57.csv", skip = 3, sep = ";", nrows = 5571, col.names = c("Município", "2023/Jan", "2023/Fev", "2023/Mar", "2023/Abr", "2023/Mai", "2023/Jun", "2023/Jul", "2023/Ago", "2023/Set", "2023/Out", "2023/Nov", "2023/Dez"))
+racacor <- read_xlsx("Data/racacor(municipio).xlsx", skip = 5, col_names = c("Ibge", "Município_UF", "Total", "Branca", "Preta", "Amarela", "Parda", "Indígena"))
 
+# instrucao
+
+Nordeste <- read_xlsx("Data/Censo 2022 - Nível de instrução - Nordeste.xlsx")
+Co <- read_xlsx("Data/Censo 2022 - Nível de instrução - Centro-Oeste.xlsx")
+Norte <- read_xlsx("Data/Censo 2022 - Nível de instrução - Norte.xlsx")
+Sul <- read_xlsx("Data/Censo 2022 - Nível de instrução - Sul.xlsx")
+Sudeste <- read_xlsx("Data/Censo 2022 - Nível de instrução - Sudeste.xlsx")
 ```
 
 # Práticas
@@ -84,19 +93,145 @@ bolsa_praticas <- merge(bolsa, praticas, by="Ibge", all = TRUE)
 bolsa_praticas <- bolsa_praticas %>%
   mutate(
     porte_ibge = case_when(
-      População <= 20000 ~ "Pequeno I (até 20.000 hab.)",
-      População > 20000 & População <= 50000 ~ "Pequeno II (20.001–50.000 hab.)",
-      População > 50000 & População <= 100000 ~ "Médio (50.001–100.000 hab.)",
-      População > 100000 ~ "Grande (> 100.000 hab.)",
+      População <= 20000 ~ "Pequeno (até 20.000 hab.)",
+      População > 20000 & População <= 50000 ~ "Médio (20.001–50.000 hab.)",
+      População > 50000 & População <= 100000 ~ "Grande I (50.001–100.000 hab.)",
+      População > 100000 ~ "Grande II (> 100.000 hab.)",
       TRUE ~ NA_character_
     )
   )
+
+bolsa_praticas$porte_ibge <- factor(bolsa_praticas$porte_ibge, levels = c("Pequeno (até 20.000 hab.)", "Médio (20.001–50.000 hab.)", "Grande I (50.001–100.000 hab.)", "Grande II (> 100.000 hab.)"))
 ```
+
+# Equipes 
+
+```{r}
+equipes <- equipes %>%
+  mutate(Ibge = str_split(Município, pattern = " ", simplify = T)[,1])
+equipes <- equipes[, 2:(ncol(equipes))]
+```
+
+
+```{r}
+names(equipes)[7] <- "Equipes"
+
+equipes <- equipes %>%
+  select(Ibge, Equipes)
+
+equipes <- equipes[1:5570, ]
+```
+
+```{r}
+tudo <- merge(bolsa_praticas, equipes, by="Ibge", all = TRUE)
+```
+
+# Raca/cor
+
+```{r}
+racacor$Amarela[racacor$Amarela == "-"] <- "0"
+racacor$Indígena[racacor$Indígena == "-"] <- "0"
+```
+
+
+```{r}
+
+racacor <- racacor %>%
+  reframe(
+    Ibge = str_sub(Ibge, 1, 6),
+    Município_UF = Município_UF,
+    Total = Total,
+    Branca = Branca,
+    Preta = Preta,
+    Parda = Parda,
+    Amarela = as.numeric(Amarela),
+    Indígena = as.numeric(Indígena)
+  )
+
+racacor <- racacor[2:5571,]
+```
+
+
+```{r}
+tudo <- merge(tudo, racacor, by="Ibge", all = TRUE)
+```
+
+
 
 # Criação dos bancos
 
 ```{r}
-write_xlsx(bolsa_praticas, "Data/Dashboard_bolsa_praticas.xlsx")
+tudo <- tudo %>%
+  select(-Município, -`Perc. cobertura de beneficiários acompanhados (%)`)
 ```
+
+
+```{r}
+names(tudo)[6] <- "Beneficiários Bolsa"
+names(tudo)[7] <- "Acompanhados Bolsa"
+```
+
+
+```{r}
+write_xlsx(tudo, "Data/Dashboard_tudo.xlsx")
+```
+
+
+
+# Região
+
+
+```{r}
+escolaridade <- rbind(Co, Nordeste, Norte, Sudeste, Sul)
+```
+
+
+
+```{r}
+regiao <- tudo %>%
+  select(-Ibge, -UF, -porte_ibge, -Município_UF)
+
+regiao$Equipes[regiao$Equipes == "-"] <- "0"
+regiao$Equipes <- as.numeric(regiao$Equipes)
+```
+
+
+```{r}
+
+regiao <- regiao %>%
+  group_by(Região) %>%
+  summarise(across(where(is.numeric), sum, na.rm = TRUE))
+```
+
+
+
+```{r}
+regiao <- regiao %>% 
+  uncount(4)
+```
+
+
+```{r}
+escolaridade <- escolaridade %>%
+  select("Nível de instrução",  "População (pessoas)", "Grande Região")
+```
+
+```{r}
+regiao <- cbind(regiao, escolaridade)
+regiao <- regiao %>%
+  select(- "Grande Região")
+```
+
+
+```{r}
+write_xlsx(regiao, "Data/Dashboard_regiao.xlsx")
+```
+
+
+
+
+
+
+
 
 
