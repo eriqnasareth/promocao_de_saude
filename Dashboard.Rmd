@@ -185,6 +185,9 @@ write_xlsx(tudo, "Data/Dashboard_tudo.xlsx")
 escolaridade <- rbind(Co, Nordeste, Norte, Sudeste, Sul)
 ```
 
+```{r}
+temas_regiao <- pivot_wider(escolaridade, names_from = `Nível de instrução`, values_from = `População (pessoas)`)
+```
 
 
 ```{r}
@@ -228,10 +231,78 @@ write_xlsx(regiao, "Data/Dashboard_regiao.xlsx")
 ```
 
 
+# Temas e escolas
+
+```{r}
+escolas <- read_xlsx("Data/taxas_atividades_municipio_dash.xlsx")
+temas <- read_xlsx("Data/taxas_temas_municipio_dash.xlsx")
+
+names(temas)[4] <- "Ibge" 
+temas <- temas %>%
+  select(Ibge, total_temas)
+
+names(escolas)[4] <- "Ibge" 
+escolas <- escolas %>%
+  select(-regiao, -uf, -municipio, -porte)
+```
+
+
+```{r}
+tudo_davi <- merge(tudo, escolas, by = "Ibge", all = TRUE)
+tudo_davi <- merge(tudo_davi, temas, by = "Ibge", all = TRUE)
+```
+
+
+```{r}
+write_xlsx(tudo_davi, "Data/tudo_davi.xlsx")
+```
+
+
+# Temas região
 
 
 
+```{r}
+regiao_temas <- tudo_davi %>%
+  select(-Ibge, -UF, -porte_ibge, -Município_UF)
+
+regiao_temas$Equipes[regiao_temas$Equipes == "-"] <- "0"
+regiao_temas$Equipes <- as.numeric(regiao_temas$Equipes)
+```
+
+
+```{r}
+
+regiao_temas <- regiao_temas %>%
+  group_by(Região) %>%
+  summarise(across(where(is.numeric), sum, na.rm = TRUE))
+
+```
+
+
+```{r}
+temas_regiao <- temas_regiao %>%
+  select(-...4, - ...5)
+```
+
+
+```{r}
+names(temas_regiao)[1] <- "Região"
+```
+
+
+```{r}
+temas_regiao$Região <- toupper(temas_regiao$Região)
+```
+
+
+```{r}
+regiao_temas_total <- merge(temas_regiao, regiao_temas, "Região")
+```
 
 
 
+```{r}
+write_xlsx(regiao_temas_total, "Data/tudo_davi_regiao.xlsx")
+```
 
