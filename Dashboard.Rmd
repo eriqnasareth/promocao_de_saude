@@ -60,14 +60,16 @@ populacao <- populacao %>%
 
 ```{r}
 praticas <- praticas %>%
-  select(-Uf, -Municipio)
+  select( -Municipio)
 
 ```
 
 ```{r}
-praticas$Praticas <- rowSums(praticas[,-1])
+praticas$Praticas <- rowSums(praticas[,c(-1, -2)])
 
 ```
+
+
 
 
 
@@ -93,15 +95,21 @@ bolsa_praticas <- merge(bolsa, praticas, by="Ibge", all = TRUE)
 bolsa_praticas <- bolsa_praticas %>%
   mutate(
     porte_ibge = case_when(
-      População <= 20000 ~ "Pequeno (até 20.000 hab.)",
-      População > 20000 & População <= 50000 ~ "Médio (20.001–50.000 hab.)",
-      População > 50000 & População <= 100000 ~ "Grande I (50.001–100.000 hab.)",
-      População > 100000 ~ "Grande II (> 100.000 hab.)",
+      População <= 20000 ~ "Pequeno I (até 20.000 hab.)",
+      População > 20000 & População <= 50000 ~ "Pequeno II (20.001–50.000 hab.)",
+      População > 50000 & População <= 100000 ~ "Médio (50.001–100.000 hab.)",
+      População > 100000 ~ "Grande (> 100.000 hab.)",
       TRUE ~ NA_character_
     )
   )
 
-bolsa_praticas$porte_ibge <- factor(bolsa_praticas$porte_ibge, levels = c("Pequeno (até 20.000 hab.)", "Médio (20.001–50.000 hab.)", "Grande I (50.001–100.000 hab.)", "Grande II (> 100.000 hab.)"))
+bolsa_praticas$porte_ibge <- factor(bolsa_praticas$porte_ibge, levels = c("Pequeno I (até 20.000 hab.)", "Pequeno II (20.001–50.000 hab.)", "Médio (50.001–100.000 hab.)", "Grande (> 100.000 hab.)"))
+```
+
+```{r}
+bolsa_praticas %>%
+  group_by(Uf) %>%
+  summarise(soma = sum(Praticas) / sum(Populacao_Cadastrada))
 ```
 
 # Equipes 
